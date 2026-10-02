@@ -75,6 +75,7 @@ function Get-VarIndex($ss, $key) {
   if ($key -is [string]) {
     $name = [string]$key
     if ($name.Trim() -eq '') { throw 'empty variable name' }
+    if ($name -match '^\d+$') { return Get-VarIndex $ss ([int]$name) }
     $i = $null
     try { $i = comCall $ss 'VariableNumber' @($name) } catch { $i = $null }
     if ($null -ne $i -and [int]$i -gt 0) { return [int]$i }
@@ -546,15 +547,17 @@ try {
         $warnings = [System.Collections.ArrayList]::new()
         foreach ($step in @($req.steps)) {
           if ($step.PSObject.Properties.Name -contains 'set') {
+            $d = $ana.Dialog
             foreach ($p in $step.set.PSObject.Properties) {
-              try { $null = comSetOne $ana.Dialog $p.Name (Convert-JsonValue $p.Value) }
+              try { $null = comSetOne $d $p.Name (Convert-JsonValue $p.Value) }
               catch { $null = $warnings.Add("could not set property '$($p.Name)': $($_.Exception.Message)") }
             }
           }
           elseif ($step.PSObject.Properties.Name -contains 'call') {
+            $d = $ana.Dialog
             $args = @()
             if ($null -ne $step.args) { $args = @($step.args) }
-            try { $null = comCall $ana.Dialog ([string]$step.call) $args }
+            try { $null = comCall $d ([string]$step.call) $args }
             catch { $null = $warnings.Add("could not call '$($step.call)': $($_.Exception.Message)") }
           }
           elseif ($step.PSObject.Properties.Name -contains 'run') {
@@ -567,11 +570,12 @@ try {
           }
           elseif ($step.PSObject.Properties.Name -contains 'result') {
             $key = [string]$step.result
+            $d = $ana.Dialog
             $v = $null
-            try { $v = comGet $ana.Dialog $key @() } catch { $v = $null }
+            try { $v = comGet $d $key @() } catch { $v = $null }
             if ($null -eq $v) {
               for ($k = 1; $k -le 4; $k++) {
-                try { $v = comGet $ana.Dialog $key @($k) } catch { $v = $null }
+                try { $v = comGet $d $key @($k) } catch { $v = $null }
                 if ($null -ne $v) { break }
               }
             }
