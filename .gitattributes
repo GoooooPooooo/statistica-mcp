@@ -1,0 +1,9 @@
+# Normalize line endings so Git does not rewrite files on checkout.
+# The project is edited cross-platform; keep LF everywhere.
+* text=auto eol=lf
+
+# Windows scripts are safest with CRLF, but PowerShell 7 handles LF too.
+*.ps1 text eol=lf
+*.mjs text eol=lf
+*.md text eol=lf
+*.json text eol=lf
