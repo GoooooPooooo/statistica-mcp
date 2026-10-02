@@ -21,7 +21,8 @@ const WORK = join(process.env.TEMP, 'sta-selftest-work.sta')
 const CSV = join(process.env.TEMP, 'sta-selftest-out.csv')
 const SAVED = join(process.env.TEMP, 'sta-selftest-saved.sta')
 const IMPORT_CSV = join(process.env.TEMP, 'sta-selftest-import.csv')
-for (const f of [WORK, CSV, SAVED, IMPORT_CSV]) rmSync(f, { force: true })
+const GRAPH_PNG = join(process.env.TEMP, 'sta-selftest-graph.png')
+for (const f of [WORK, CSV, SAVED, IMPORT_CSV, GRAPH_PNG]) rmSync(f, { force: true })
 copyFileSync(SRC, WORK)
 writeFileSync(IMPORT_CSV, 'x;y;label\n1;2.5;a\n2;3.1;b\n3;4.7;c\n', 'utf8')
 
@@ -151,6 +152,8 @@ await check(
   { mustInclude: 'ForecastCases' },
 )
 await check('time series: spectral', 'statistica_time_series', { path: WORK, procedure: 'spectral', variables: [2] }, { mustInclude: 'Frequency' })
+await check('graph build + export png', 'statistica_graph', { path: WORK, module: 11003, variables: '2 | 11', out: GRAPH_PNG }, { mustInclude: 'saved graphs' })
+console.log(`      png on disk: ${existsSync(GRAPH_PNG)} (${existsSync(GRAPH_PNG) ? readFileSync(GRAPH_PNG).length : 0} bytes)`)
 await check('time series: smoothing', 'statistica_time_series', { path: WORK, procedure: 'smoothing', variables: [2], window: 3 }, { mustInclude: 'SaveVariables' })
 await check('t-test (dependent)', 'statistica_t_test', { path: WORK, kind: 'dependent', variables: [2, 3] }, { mustInclude: 'Confidence' })
 
@@ -178,5 +181,5 @@ if (failures.length) {
 }
 
 p.stdin.end()
-for (const f of [WORK, CSV, SAVED, IMPORT_CSV]) rmSync(f, { force: true })
+for (const f of [WORK, CSV, SAVED, IMPORT_CSV, GRAPH_PNG]) rmSync(f, { force: true })
 process.exit(fail > 0 ? 1 : 0)

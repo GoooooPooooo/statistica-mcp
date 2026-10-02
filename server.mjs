@@ -579,6 +579,26 @@ const TOOLS = [
     },
   },
   {
+    name: 'statistica_graph',
+    description:
+      'Build a STATISTICA graph and optionally export it to an image file. `variables` uses the module syntax, typically "x | y". ' +
+      '`properties` sets additional dialog options (e.g. GraphType, FitType, ShowRawDataPoints). ' +
+      'Common modules: 11003 2D Scatterplots, 11012 2D Line Plots, 11002 2D Histograms, 11010 2D Box Plots, 11021 3D Sequential, 11032 3D Surface.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string' },
+        sheet: { type: ['string', 'integer'] },
+        module: { type: ['string', 'integer'], description: 'Graph module id (see list_analysis_modules / AnalysisIdentifier).' },
+        variables: { type: 'string', description: 'Variable list for the graph, e.g. "2 | 11".' },
+        properties: { type: 'object', description: 'Extra dialog properties to set before building the graph.', additionalProperties: true },
+        out: { type: 'string', description: 'Optional image path (.png/.jpg/.emf); parent folders are created.' },
+      },
+      required: ['path', 'module', 'variables'],
+      additionalProperties: false,
+    },
+  },
+  {
     name: 'statistica_time_series',
     description:
       'Time Series / Forecasting module. procedure is one of: ' +
@@ -635,7 +655,8 @@ const TOOLS = [
       '{"set": {PropertyName: value}} (set dialog properties), ' +
       '{"call": "MethodName", "args": [...]} (invoke a dialog method, e.g. ARIMAAndAutocorrelationFunctions), ' +
       '{"run": true} (execute the analysis), ' +
-      '{"result": "Summary"} (read a result document/table after the run). ' +
+      '{"result": "Summary"} (read a result document/table after the run), ' +
+      '{"saveGraph": "C:\\\\out\\\\plot.png", "result": "Graphs"} (export a graph document to an image; .png/.jpg/.emf). ' +
       'Results are returned as tables, arrays or document handles. Use describe_analysis to discover property and method names.',
     inputSchema: {
       type: 'object',
@@ -759,6 +780,10 @@ function formatAnalysis(r) {
   for (const [key, val] of Object.entries(r.results ?? {})) {
     lines.push('', `--- ${key} ---`)
     lines.push(renderResult(val))
+  }
+  if (r.graphs && Object.keys(r.graphs).length) {
+    lines.push('', '--- saved graphs ---')
+    for (const [k, v] of Object.entries(r.graphs)) lines.push(`  ${k}: ${v.out} (${v.bytes} bytes)`)
   }
   return lines.join('\n')
 }
@@ -1024,6 +1049,15 @@ async function callTool(name, a) {
         steps = [{ set: { Statistics: 6 } }, { run: true }, { set: opts }, { run: true }, { result: 'TTests' }]
       }
       return analysis(a, 1301, steps)
+    }
+
+    case 'statistica_graph': {
+      const steps = []
+      if (a.properties && typeof a.properties === 'object') steps.push({ set: a.properties })
+      steps.push({ set: { Variables: String(a.variables) } })
+      if (a.out) steps.push({ saveGraph: a.out, result: 'Graphs' })
+      else steps.push({ result: 'Graphs' })
+      return analysis(a, a.module, steps)
     }
 
     case 'statistica_time_series': {

@@ -544,6 +544,7 @@ try {
         $out = [ordered]@{}
         $runCount = 0
         $results = @{}
+        $graphOut = [ordered]@{}
         $warnings = [System.Collections.ArrayList]::new()
         foreach ($step in @($req.steps)) {
           if ($step.PSObject.Properties.Name -contains 'set') {
@@ -568,6 +569,49 @@ try {
             catch { $null = $warnings.Add("run failed: $($_.Exception.Message)") }
             $runCount++
           }
+          elseif ($step.PSObject.Properties.Name -contains 'saveGraph') {
+            $key = 'Graphs'
+            if ($null -ne $step.result) { $key = [string]$step.result }
+            $outPath = [string]$step.saveGraph
+            $d = $ana.Dialog
+            $v = $null
+            try { $v = comGet $d $key @() } catch { $v = $null }
+            if ($null -eq $v) {
+              for ($k = 1; $k -le 6; $k++) {
+                try { $v = comGet $d $key @($k) } catch { $v = $null }
+                if ($null -ne $v) { break }
+              }
+            }
+            if ($null -eq $v) { $null = $warnings.Add("saveGraph: no graph in '$key'") }
+            else {
+              $list = @()
+              $cnt = $null
+              try { $cnt = [int](comGet $v 'Count' @()) } catch { $cnt = $null }
+              if ($null -ne $cnt) {
+                for ($gi = 1; $gi -le $cnt; $gi++) { try { $list += , (comGet $v 'Item' @($gi)) } catch { } }
+              }
+              else { $list += , $v }
+              $idx = 1
+              foreach ($g in $list) {
+                $path = $outPath
+                if ($list.Count -gt 1) {
+                  $ext = [System.IO.Path]::GetExtension($outPath)
+                  $base = $outPath
+                  if ($ext) { $base = $outPath.Substring(0, $outPath.Length - $ext.Length) }
+                  $path = "$base`_$idx$ext"
+                }
+                $dir = [System.IO.Path]::GetDirectoryName($path)
+                if ($dir -and -not (Test-Path -LiteralPath $dir)) { $null = New-Item -ItemType Directory -Path $dir -Force }
+                if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path -Force }
+                try {
+                  $null = comCall $g 'SaveAs' @($path)
+                  $graphOut["graph$($idx - 1)"] = @{ out = $path; bytes = (Wait-File $path) }
+                }
+                catch { $null = $warnings.Add("saveGraph failed: $($_.Exception.Message)") }
+                $idx++
+              }
+            }
+          }
           elseif ($step.PSObject.Properties.Name -contains 'result') {
             $key = [string]$step.result
             $d = $ana.Dialog
@@ -585,7 +629,7 @@ try {
             $results[$name] = Convert-Result $v
           }
         }
-        $result = @{ module = $module; name = [string]$ana.Name; steps = $out; results = $results; warnings = $warnings }
+        $result = @{ module = $module; name = [string]$ana.Name; steps = $out; results = $results; graphs = $graphOut; warnings = $warnings }
         break
       }
 
