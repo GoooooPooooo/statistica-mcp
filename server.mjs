@@ -555,6 +555,28 @@ const TOOLS = [
     },
   },
   {
+    name: 'statistica_t_test',
+    description:
+      'Student t-tests via the STATISTICA Basic Statistics module. kind=single tests means against a constant; kind=dependent runs paired comparisons over the listed variables (pairs).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string' },
+        sheet: { type: ['string', 'integer'] },
+        kind: { type: 'string', enum: ['single', 'dependent'], description: 'Test kind. Default single.' },
+        variables: {
+          type: 'array',
+          items: { type: ['string', 'integer'] },
+          description: 'single: variables to test. dependent: variables forming pairs (2, 4, ... entries).',
+        },
+        constant: { type: 'number', description: 'single: reference constant to test the mean against. Default 0.' },
+        summary: { type: 'boolean', description: 'dependent only: also return the per-variable summary. Default true.' },
+      },
+      required: ['path', 'kind', 'variables'],
+      additionalProperties: false,
+    },
+  },
+  {
     name: 'statistica_time_series',
     description:
       'Time Series / Forecasting module. procedure is one of: ' +
@@ -600,7 +622,7 @@ const TOOLS = [
         sheet: { type: ['string', 'integer'] },
         module: { type: ['string', 'integer'], description: 'Module id or name (see list_analysis_modules).' },
       },
-      required: ['module'],
+      required: ['path', 'module'],
       additionalProperties: false,
     },
   },
@@ -982,6 +1004,24 @@ async function callTool(name, a) {
         { result: 'UnivariateResults' },
       ]
       return analysis(a, 4601, steps)
+    }
+
+    case 'statistica_t_test': {
+      const vs = varSpec(a.variables)
+      if (!vs) throw new Error('`variables` is required')
+      const kind = a.kind ?? 'single'
+      let steps
+      if (kind === 'dependent') {
+        if (Array.isArray(a.variables) && a.variables.length % 2 !== 0) {
+          throw new Error('dependent t-test needs an even number of variables (pairs)')
+        }
+        steps = [{ set: { Statistics: 5 } }, { run: true }, { set: { Variables: vs } }, { run: true }, { result: 'Summary' }]
+      } else {
+        const opts = { Variables: vs, TestMeansAgainstConstant: true }
+        if (a.constant !== undefined) opts.Constant = a.constant
+        steps = [{ set: { Statistics: 6 } }, { run: true }, { set: opts }, { run: true }, { result: 'TTests' }]
+      }
+      return analysis(a, 1301, steps)
     }
 
     case 'statistica_time_series': {
