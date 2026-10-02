@@ -73,7 +73,7 @@ $app.Quit()
 node selftest.mjs "C:\путь\к\LAB3.sta"
 ```
 
-Скрипт создаёт временную копию файла, прогоняет **27 проверок** (все инструменты, включая анализы и импорт) и печатает результат. Исходный файл не изменяется.
+Скрипт создаёт временную копию файла, прогоняет **29 проверок** (все инструменты, включая анализы, формулы, и импорт) и печатает результат. Исходный файл не изменяется.
 
 ---
 
@@ -105,9 +105,20 @@ node selftest.mjs "C:\путь\к\LAB3.sta"
 | `rename_variables` | Переименование коротких/длинных имён (по имени или индексу). |
 | `delete_variables` | Удаление диапазона переменных. |
 | `set_size` | Изменение размера таблицы. |
+| `set_formula` | Запись формулы в переменную (`=v9*v10`) и пересчёт (`Recalculate`). |
 | `import_data` | Импорт текста/Excel в STATISTICA. |
 | `export_csv` | Экспорт листа штатным CSV-писателем. |
 | `save_spreadsheet` | Сохранение листа в новый файл (`.sta`, `.stw`, `.csv`, `.xlsx`). |
+| `statistica_graph` | Построение графика (`module` + `variables`) и экспорт в `.png`/`.jpg`/`.emf` (`out`). |
+
+### Режим «вживую» (`attach`)
+
+Любой инструмент данных/анализа принимает `attach: true`. В этом режиме worker не создаёт новый процесс, а подключается к **уже открытому** окну STATISTICA (`Marshal.GetActiveObject`), правит его активный лист и **не закрывает** программу. Так значения и формулы видны и обновляются прямо в открытом документе. Если `path` не указан — берётся активный лист.
+
+```
+set_formula { "path": "...\\LAB3.sta", "variable": "TS_Prod", "formula": "v9*v10", "attach": true }
+write_variables { "path": "...\\LAB3.sta", "columns": [{"index": 5, "values": [ ... ]}], "attach": true }
+```
 
 ### Статистика
 
@@ -120,6 +131,7 @@ node selftest.mjs "C:\путь\к\LAB3.sta"
 | `statistica_t_test` | t-тесты: `single` (к константе) и `dependent` (парные). |
 | `statistica_regression` | Множественная регрессия (модуль GRM). |
 | `statistica_time_series` | Временные ряды: `descriptives`, `autocorrelation`, `partial_autocorrelation`, `cross_correlation`, `arima`, `spectral`, `smoothing`, `exponential_smoothing`, `differencing`, `seasonal_decomposition`. |
+| `statistica_graph` | График и его экспорт в изображение (2D scatter, 2D line, 3D surface и др.). |
 
 ### Универсальный движок
 
@@ -141,7 +153,8 @@ node selftest.mjs "C:\путь\к\LAB3.sta"
     { "run":  true },
     { "set":  { "NumberOfCasesToForecast": 12 } },
     { "result": "Summary" },
-    { "result": "ForecastCases" }
+    { "result": "ForecastCases" },
+    { "saveGraph": "C:\\out\\forecast.png", "result": "PlotSeriesAndForecasts" }
   ]
 }
 ```
@@ -150,6 +163,7 @@ node selftest.mjs "C:\путь\к\LAB3.sta"
 - `call` — вызвать метод диалога (например, `SpectralFourierAnalysis`, `Transformations`, `ExponentialSmoothingAndForecasting`). Опционально `args`.
 - `run` — выполнить анализ (`Application.Analysis(...).Run`).
 - `result` — прочитать свойство после запуска. Результат маршалится как таблица, массив, коллекция или идентификатор документа. Если свойство параметризованное (например `Summary(1)`), индекс подставляется автоматически.
+- `saveGraph` — прочитать свойство-график (по умолчанию `Graphs`) и сохранить изображение; путь определяется расширением (`.png`/`.jpg`/`.emf`), родительские папки создаются.
 
 Неверные свойства/методы не прерывают анализ: они попадают в блок `Warnings` ответа.
 
@@ -186,6 +200,21 @@ statistica_time_series { "path": "...", "procedure": "smoothing", "variables": [
 statistica_time_series { "path": "...", "procedure": "spectral",  "variables": [2] }
 ```
 
+**Формула и корреляционное произведение**
+
+```
+set_formula { "path": "...\\LAB3.sta", "variable": 19, "formula": "v9*v10" }
+```
+
+**График в файл (2D-диаграмма рассеяния)**
+
+```
+statistica_graph {
+  "path": "...\\LAB3.sta", "module": 11003, "variables": "2 | 11",
+  "properties": { "GraphType": 0 }, "out": "C:\\...\\reports\\scatter.png"
+}
+```
+
 **Любая процедура — движок**
 
 ```
@@ -214,6 +243,9 @@ run_analysis {
 - **`CallByName` не сочетается с массивом значений в одном аргументе** — из-за этого используется `comSetOne` и ручная сборка `[object[]]`.
 - **Time Series `TypeOfTransformation`.** Сеттер не принимает флаговые константы (`0x40000000 + n`) и падает с `Access Violation`; нужно передавать индекс без флага: `Smoothing = 1`, `Fourier = 5`, `Autocorrelation = 7`, `Descriptive = 8`, `Differencing = 4`. Таблица — в `describe_analysis`.
 - **ARIMA `NumberOfCasesToForecast`** задаётся после `Run`.
+- **Формулы.** Формула хранится в длинном имени переменной. `VariableLongName` — индексируемое свойство с аксессором `Set`, `CallByName` его не берёт; присваивать нативно (`$ss.VariableLongName(idx) = "=..."`), затем `Recalculate(idx)`.
+- **Графики.** Чтение `.Graphs` само строит график (явный `Run` у графового модуля даёт `E_UNEXPECTED`); экспорт — `Graph.SaveAs(path)`, расширение задаёт формат.
+- **Live-режим.** `Marshal.GetActiveObject('STATISTICA.Application')` есть в PowerShell 5.1 (нет в PowerShell 7); в режиме `attach` программа не закрывается.
 - **`SaveAsPDF` зависает** в headless-режиме — не используется.
 - **Методы с `out`-параметрами** (`Statistics`, `ColumnStats`) через `CallByName` не работают, поэтому часть описательных статистик считает Node.
 
@@ -221,10 +253,10 @@ run_analysis {
 
 ## Ограничения
 
-1. **Stateless:** каждый вызов — новый процесс `statist.exe`, задержка в несколько секунд; изменения сохраняются только с `save`.
-2. **Графики** возвращаются как идентификаторы документов, экспорт изображений не реализован.
-3. **Запись формул** STATISTICA не удалась; производный ряд считается в Node и пишется значениями.
-4. **Пресеты** покрывают популярные сценарии; полный доступ — через `run_analysis` + `describe_analysis`.
+1. **По умолчанию stateless:** каждый вызов — новый процесс `statist.exe`, задержка в несколько секунд; изменения сохраняются только с `save`. Режим `attach` работает с открытым окном без закрытия.
+2. **Пресеты** покрывают популярные сценарии; полный доступ — через `run_analysis` + `describe_analysis`.
+3. **Методы с `out`-параметрами** (`Statistics`, `ColumnStats`) недоступны через `CallByName` — часть статистик считается в Node.
+4. **Графики** сохраняются в изображения; интерактивного редактирования графов нет.
 
 ---
 
@@ -242,8 +274,9 @@ run_analysis {
 statistica/
   server.mjs                     MCP-сервер, протокол, инструменты
   sta.ps1                        COM-воркер (файловый обмен)
-  selftest.mjs                   самопроверка (27 проверок)
+  selftest.mjs                   самопроверка (29 проверок)
   package.json                   зависимостей нет
   reports/
     development-report.md        отчёт: проблемы, гипотезы, решения, итог
+    improvement-plan.md          план дальнейшего развития
 ```

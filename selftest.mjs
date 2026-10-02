@@ -102,7 +102,7 @@ console.log(`STATISTICA MCP selftest\nsource: ${SRC}\nwork copy: ${WORK}\n`)
 const init = await rpc('initialize', {
   protocolVersion: '2024-11-05',
   capabilities: {},
-  clientInfo: { name: 'selftest', version: '2.0.0' },
+  clientInfo: { name: 'selftest', version: '2.1.0' },
 })
 p.stdin.write(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }) + '\n')
 

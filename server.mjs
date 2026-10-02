@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url'
 const HERE = dirname(fileURLToPath(import.meta.url))
 const WORKER = join(HERE, 'sta.ps1')
 const SERVER_NAME = 'statistica-mcp'
-const SERVER_VERSION = '2.0.0'
+const SERVER_VERSION = '2.1.0'
 const DEFAULT_PROTOCOL = '2024-11-05'
 const TIMEOUT_MS = 600000
 
