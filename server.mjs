@@ -235,16 +235,18 @@ const ENUMS = {
     },
   },
   1901: {
-    TimeSeriesTransformations: {
-      scTimSimpleOneSeriesTransformations: 1073741824,
-      scTimSmoothingTransformations: 1073741825,
-      scTimTwoSeriesTransformations: 1073741826,
-      scTimShiftingTransformations: 1073741827,
-      scTimDifferencingIntegrateTransformations: 1073741828,
-      scTimFourierTransformations: 1073741829,
-      scTimReviewAndPlotWithoutTransformations: 1073741830,
-      scTimAutocorrelationWithoutTransformations: 1073741831,
-      scTimDescriptiveWithoutTransformations: 1073741832,
+    // NB: the Time Series dialog rejects the flagged constants (0x40000000+n) with
+    // an Access Violation and expects the plain index (constant - 0x40000000).
+    'TypeOfTransformation (settable index)': {
+      SimpleOneSeries: 0,
+      Smoothing: 1,
+      TwoSeries: 2,
+      Shifting: 3,
+      DifferencingIntegrate: 4,
+      Fourier: 5,
+      ReviewAndPlot: 6,
+      Autocorrelation: 7,
+      Descriptive: 8,
     },
     InterruptedTimeSeries: {
       scTimAbruptPermanent: 1073741824,
@@ -989,12 +991,12 @@ async function callTool(name, a) {
       if (!dep || !pred) throw new Error('`dependent` and `predictors` are required')
       const methodMap = {
         all_effects: 'RegressionAllEffectsIncluded',
-        standard: 'RegressionStandard',
         forward: 'ForwardStepwiseRegression',
         backward: 'BackwardStepwiseRegression',
       }
-      const methodProp = methodMap[a.method ?? 'standard'] ?? 'RegressionStandard'
-      const opts = { Variables: `${dep} | ${pred}`, [methodProp]: true }
+      const opts = { Variables: `${dep} | ${pred}` }
+      const methodProp = methodMap[a.method ?? 'standard']
+      if (methodProp) opts[methodProp] = true
       const steps = [
         { set: { GRMAnalysisItem: 1 } },
         { run: true },
@@ -1035,7 +1037,7 @@ async function callTool(name, a) {
           steps = [
             { set: { Variables: vs, FocusTimeSeriesVariable: focus } },
             { run: true },
-            { set: { TypeOfTransformation: 1073741832 } },
+            { set: { TypeOfTransformation: 8 } },
             { result: 'DescriptiveStatistics' },
           ]
           break
@@ -1044,7 +1046,7 @@ async function callTool(name, a) {
           steps = [
             { set: { Variables: vs, FocusTimeSeriesVariable: focus } },
             { run: true },
-            { set: { TypeOfTransformation: 1073741831, NumberOfLags: a.lags ?? 20, WhiteNoiseStandardErrors: true, PLevelForHighlighting: 0.05 } },
+            { set: { TypeOfTransformation: 7, NumberOfLags: a.lags ?? 20, WhiteNoiseStandardErrors: true, PLevelForHighlighting: 0.05 } },
             { result: 'Autocorrelations' },
             { result: 'PartialAutocorrelations' },
           ]
@@ -1053,7 +1055,7 @@ async function callTool(name, a) {
           steps = [
             { set: { Variables: vs, FocusTimeSeriesVariable: focus } },
             { run: true },
-            { set: { TypeOfTransformation: 1073741831, NumberOfLags: a.lags ?? 20, WhiteNoiseStandardErrors: true } },
+            { set: { TypeOfTransformation: 7, NumberOfLags: a.lags ?? 20, WhiteNoiseStandardErrors: true } },
             { set: { ResultsSelection: 1 } },
             { result: 'CrossCorrelations' },
           ]
@@ -1064,7 +1066,7 @@ async function callTool(name, a) {
             { run: true },
             {
               set: {
-                TypeOfTransformation: 1073741825,
+                TypeOfTransformation: 1,
                 NPointsMovingAverage: true,
                 NPointsWindowForMovingAverage: a.window ?? 3,
               },
@@ -1079,7 +1081,6 @@ async function callTool(name, a) {
             { set: { Variables: vs, FocusTimeSeriesVariable: focus } },
             { call: 'SpectralFourierAnalysis' },
             { run: true },
-            { set: { TypeOfTransformation: 1073741829 } },
             { result: 'Summary' },
           ]
           break
@@ -1089,7 +1090,7 @@ async function callTool(name, a) {
             { run: true },
             {
               set: {
-                TypeOfTransformation: 1073741828,
+                TypeOfTransformation: 4,
                 DifferenceSeries: true,
                 LagForSimpleDifference: a.differenceLag ?? 1,
               },
