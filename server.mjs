@@ -357,6 +357,24 @@ const TOOLS = [
     },
   },
   {
+    name: 'set_formula',
+    description:
+      'Assign a formula to a variable (STATISTICA keeps it in the variable long name) and recompute it, e.g. formula "=v9*v10". The result values are returned for inspection. Use attach=true to write into the running STATISTICA window.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Absolute path to the source file.' },
+        sheet: { type: ['string', 'integer'] },
+        variable: { type: ['string', 'integer'], description: 'Target variable (name or 1-based index).' },
+        formula: { type: 'string', description: 'Formula without or with a leading "=", e.g. "v9*v10".' },
+        recalculate: { type: 'boolean', description: 'Recompute the variable after assignment. Default true.' },
+        save: { type: 'string', description: 'Optional destination .sta path.' },
+      },
+      required: ['path', 'variable', 'formula'],
+      additionalProperties: false,
+    },
+  },
+  {
     name: 'add_variables',
     description: 'Append new empty variables to a spreadsheet. type: 0=numeric, 1=text, 2=integer, 3=byte.',
     inputSchema: {
@@ -796,8 +814,20 @@ async function analysis(a, module, steps) {
     module: resolveModule(module),
     steps,
     save: a.save,
+    attach: a.attach,
   })
   return formatAnalysis(r)
+}
+
+// Add the optional `attach` switch to every data/analysis tool (not to info/list/import/export).
+for (const t of TOOLS) {
+  if (['statistica_info', 'list_analysis_modules', 'import_data', 'export_csv'].includes(t.name)) continue
+  if (t.inputSchema && t.inputSchema.properties) {
+    t.inputSchema.properties.attach = {
+      type: 'boolean',
+      description: 'Attach to the already-running STATISTICA instance and edit it live (no new process, the app is not closed).',
+    }
+  }
 }
 
 async function callTool(name, a) {
@@ -814,7 +844,7 @@ async function callTool(name, a) {
     }
 
     case 'describe_spreadsheet': {
-      const r = await runWorker({ cmd: 'describe', path: requirePath(a), sheet: a.sheet })
+      const r = await runWorker({ cmd: 'describe', path: requirePath(a), sheet: a.sheet, attach: a.attach })
       const lines = [`File: ${a.path}`, `Sheet: ${r.sheetName} (index ${r.sheetIndex})`, `Size: ${r.cases} cases x ${r.variables} variables`]
       if (Array.isArray(r.sheets) && r.sheets.length > 1) lines.push(`Sheets in file: ${r.sheets.join(', ')}`)
       lines.push('', 'idx  name                       type     len  measurement  missing      long name / formula', '---  --------------------------  -------  ---  -----------  -----------  --------------------')
@@ -828,7 +858,7 @@ async function callTool(name, a) {
     }
 
     case 'read_variables': {
-      const r = await runWorker({ cmd: 'read', path: requirePath(a), sheet: a.sheet, variables: a.variables, offset: a.offset, limit: a.limit })
+      const r = await runWorker({ cmd: 'read', path: requirePath(a), sheet: a.sheet, variables: a.variables, offset: a.offset, limit: a.limit, attach: a.attach })
       const lines = []
       for (const d of r.data) {
         const isText = d.type === 1
@@ -849,11 +879,26 @@ async function callTool(name, a) {
 
     case 'write_variables': {
       if (!Array.isArray(a.columns) || a.columns.length === 0) throw new Error('`columns` must be a non-empty array')
-      const r = await runWorker({ cmd: 'write', path: requirePath(a), sheet: a.sheet, columns: a.columns, save: a.save })
+      const r = await runWorker({ cmd: 'write', path: requirePath(a), sheet: a.sheet, columns: a.columns, save: a.save, attach: a.attach })
       const lines = [`Wrote ${r.written.length} variable(s); spreadsheet now ${r.cases} cases`]
       for (const w of r.written) lines.push(`  #${w.index} ${w.name} (${w.type}): ${w.written} value(s)`)
       if (r.saved) lines.push(`Saved to ${r.saved}`)
       return lines.join('\n')
+    }
+
+    case 'set_formula': {
+      const r = await runWorker({
+        cmd: 'formula',
+        path: requirePath(a),
+        sheet: a.sheet,
+        variable: a.variable,
+        formula: a.formula,
+        recalculate: a.recalculate,
+        save: a.save,
+        attach: a.attach,
+      })
+      const vals = (r.values ?? []).map((v) => fmt(v)).join(', ')
+      return [`Set formula on #${r.index} ${r.name}: ${r.longName}`, `first values: ${vals}`].join('\n')
     }
 
     case 'add_variables': {
@@ -868,6 +913,7 @@ async function callTool(name, a) {
         type: a.type,
         typeLength: a.typeLength,
         save: a.save,
+        attach: a.attach,
       })
       const lines = [`Now ${r.variables} variables`]
       for (const v of r.added) lines.push(`  added #${v.index} "${v.name}"`)
@@ -876,7 +922,7 @@ async function callTool(name, a) {
     }
 
     case 'rename_variables': {
-      const r = await runWorker({ cmd: 'rename', path: requirePath(a), sheet: a.sheet, renames: a.renames, longNames: a.longNames, save: a.save })
+      const r = await runWorker({ cmd: 'rename', path: requirePath(a), sheet: a.sheet, renames: a.renames, longNames: a.longNames, save: a.save, attach: a.attach })
       const lines = [`Renamed ${r.renamed.length} variable(s)`]
       for (const d of r.renamed) lines.push(`  #${d.index}: "${d.from}" -> "${d.to}"`)
       if (a.save) lines.push(`Saved to ${a.save}`)
@@ -884,14 +930,14 @@ async function callTool(name, a) {
     }
 
     case 'delete_variables': {
-      const r = await runWorker({ cmd: 'delete_variables', path: requirePath(a), sheet: a.sheet, from: a.from, to: a.to, save: a.save })
+      const r = await runWorker({ cmd: 'delete_variables', path: requirePath(a), sheet: a.sheet, from: a.from, to: a.to, save: a.save, attach: a.attach })
       const lines = [`Deleted variables ${r.deletedFrom}..${r.deletedTo}; now ${r.variables} variables`]
       if (a.save) lines.push(`Saved to ${a.save}`)
       return lines.join('\n')
     }
 
     case 'set_size': {
-      const r = await runWorker({ cmd: 'set_size', path: requirePath(a), sheet: a.sheet, cases: a.cases, variables: a.variables, save: a.save })
+      const r = await runWorker({ cmd: 'set_size', path: requirePath(a), sheet: a.sheet, cases: a.cases, variables: a.variables, save: a.save, attach: a.attach })
       const lines = [`Resized to ${r.cases} cases x ${r.variables} variables`]
       if (a.save) lines.push(`Saved to ${a.save}`)
       return lines.join('\n')
@@ -924,7 +970,7 @@ async function callTool(name, a) {
     }
 
     case 'descriptives': {
-      const r = await runWorker({ cmd: 'read', path: requirePath(a), sheet: a.sheet, variables: a.variables })
+      const r = await runWorker({ cmd: 'read', path: requirePath(a), sheet: a.sheet, variables: a.variables, attach: a.attach })
       const lines = [`Descriptive statistics for ${a.path}`, '']
       lines.push('variable                       N   missing      mean         sd         se       min         q1     median         q3       max        sum')
       lines.push('---------------------------  ---  -------  ----------  ----------  ---------  ----------  ----------  ----------  ----------  ----------  ----------')

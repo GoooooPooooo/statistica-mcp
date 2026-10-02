@@ -38,6 +38,20 @@ function comSetOne($o, $n, $v) {
   $a[0] = $v
   return [Microsoft.VisualBasic.Interaction]::CallByName($o, $n, $CB::Let, $a)
 }
+# VariableLongName is an indexed property with a "Set" accessor: CallByName Let fails,
+# so it is assigned natively (this also enables formula variables, see the 'formula' command).
+function Set-LongName($ss, $idx, $value) {
+  $sv = [string]$value
+  try {
+    $ss.VariableLongName($idx) = $sv
+  }
+  catch {
+    $a = [object[]]::new(2)
+    $a[0] = $idx
+    $a[1] = $sv
+    $null = $ss.GetType().InvokeMember('VariableLongName', [System.Reflection.BindingFlags]::SetProperty, $null, $ss, $a)
+  }
+}
 
 function Wait-File($path) {
   for ($i = 0; $i -lt 20; $i++) {
@@ -289,26 +303,45 @@ function Convert-JsonValue($v) {
 # --- request handling -----------------------------------------------------
 $app = $null
 $result = $null
+$attached = $false
 try {
   $req = [System.IO.File]::ReadAllText($RequestFile, [System.Text.Encoding]::UTF8) | ConvertFrom-Json
   $cmd = [string]$req.cmd
+  if ($req.attach) { $attached = $true }
 
   if ($cmd -eq 'info') {
     $result = @{ ok = $true; cmd = $cmd }
-    $app = New-Object -ComObject 'STATISTICA.Application'
-    $app.Visible = $false
+    if ($attached) {
+      $app = [System.Runtime.InteropServices.Marshal]::GetActiveObject('STATISTICA.Application')
+    }
+    else {
+      $app = New-Object -ComObject 'STATISTICA.Application'
+      $app.Visible = $false
+    }
+    $result.attached = $attached
     $result.version = [string]$app.Version
     $result.versionEx = [string]$app.VersionEx
     $result.exe = [string]$app.Path
     $result.pid = $app.ProcessID
-    $app.Quit()
-    $app = $null
+    if (-not $attached) { $app.Quit(); $app = $null }
   }
   else {
-    $app = New-Object -ComObject 'STATISTICA.Application'
-    $app.Visible = $false
+    if ($attached) {
+      $app = [System.Runtime.InteropServices.Marshal]::GetActiveObject('STATISTICA.Application')
+    }
+    else {
+      $app = New-Object -ComObject 'STATISTICA.Application'
+      $app.Visible = $false
+    }
     $ss = $null
     if ($req.path) { $ss = Open-Sheet $app ([string]$req.path) $req.sheet }
+    elseif ($attached -and $cmd -ne 'import') {
+      $ss = $app.ActiveSpreadsheet
+      if ($null -eq $ss) { throw 'no active spreadsheet in the running STATISTICA instance' }
+      $script:sheetName = [string]$ss.Name
+      $script:sheetIndex = 1
+      try { $script:sheetIndex = [int]$ss.Index } catch { $script:sheetIndex = 1 }
+    }
     elseif ($cmd -ne 'import') { throw "path is required for command '$cmd'" }
 
     switch ($cmd) {
@@ -377,6 +410,25 @@ try {
         break
       }
 
+      'formula' {
+        # Assign a formula to a variable (stored in its long name) and recompute it.
+        $idx = Get-VarIndex $ss $req.variable
+        $formula = [string]$req.formula
+        if ($formula -ne '' -and -not $formula.StartsWith('=')) { $formula = '=' + $formula }
+        $recalc = $true
+        if ($null -ne $req.recalculate -and $req.recalculate -eq $false) { $recalc = $false }
+        if ($formula -ne '') { Set-LongName $ss $idx $formula }
+        if ($recalc) { $null = comCall $ss 'Recalculate' @($idx) }
+        $preview = Read-Variable $ss $idx 1 5
+        $result = @{
+          index = $idx
+          name = [string](comGet $ss 'VariableName' @($idx))
+          longName = [string](comGet $ss 'VariableLongName' @($idx))
+          values = $preview.values
+        }
+        break
+      }
+
       'add_variables' {
         $name = [string]$req.name
         if ($name -eq '') { throw 'name is required' }
@@ -423,7 +475,7 @@ try {
         if ($req.longNames) {
           foreach ($prop in $req.longNames.PSObject.Properties) {
             $idx = Get-VarIndex $ss $prop.Name
-            $null = comSet $ss 'VariableLongName' @($idx, [string]$prop.Value)
+            Set-LongName $ss $idx ([string]$prop.Value)
           }
         }
         $result = @{ renamed = $done; variables = [int]$ss.NumberOfVariables }
@@ -643,8 +695,7 @@ try {
       $result.saved = $sv
     }
 
-    $app.Quit()
-    $app = $null
+    if (-not $attached) { $app.Quit(); $app = $null }
   }
 
   $out = @{ ok = $true; result = $result }
@@ -656,7 +707,7 @@ catch {
   $out = @{ ok = $false; error = $msg; hresult = $hr }
 }
 finally {
-  if ($null -ne $app) {
+  if ($null -ne $app -and -not $attached) {
     try { $app.Quit() } catch { }
   }
 }

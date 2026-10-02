@@ -129,6 +129,7 @@ await check('descriptives (JS)', 'descriptives', { path: WORK, variables: [1] },
 await check('statistica_descriptives (engine)', 'statistica_descriptives', { path: WORK, variables: [1, 2] }, { mustInclude: 'Basic Statistics' })
 await check('correlation matrix', 'statistica_correlation', { path: WORK, variables: [2, 3, 4] }, { mustInclude: 'CorrelationMatrix' })
 await check('t-test (single)', 'statistica_t_test', { path: WORK, kind: 'single', variables: [2] }, { mustInclude: 't-value' })
+await check('set formula on a variable', 'set_formula', { path: WORK, variable: 12, formula: '=v2*2' }, { mustInclude: '=v2*2' })
 
 // --- analysis engine ------------------------------------------------------
 await check('describe_analysis', 'describe_analysis', { path: WORK, module: 1901 }, { mustInclude: 'Time Series' })
