@@ -1,14 +1,20 @@
 {
   "name": "statistica-mcp",
-  "version": "1.0.0",
-  "description": "Zero-dependency MCP server driving STATISTICA 12 through its COM automation interface",
+  "version": "2.0.0",
+  "description": "Zero-dependency MCP server driving STATISTICA 12 through its COM automation interface: edit .sta/.stw data and run STATISTICA analysis procedures",
   "type": "module",
   "private": true,
   "main": "server.mjs",
   "bin": { "statistica-mcp": "server.mjs" },
   "scripts": {
-    "start": "node server.mjs"
+    "start": "node server.mjs",
+    "selftest": "node selftest.mjs"
   },
   "engines": { "node": ">=18" },
-  "license": "MIT"
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GoooooPooooo/statistica-mcp.git"
+  },
+  "keywords": ["mcp", "statistica", "com", "statistics", "time-series"],
+  "license": "Apache-2.0"
 }
