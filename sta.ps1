@@ -229,6 +229,31 @@ function Write-Variable($ss, $key, $values) {
   return @{ index = $idx; name = [string](comGet $ss 'VariableName' @($idx)); written = $nCases; type = 'numeric' }
 }
 
+# --- named variable creation / whole-column rewrites ---------------------
+function Add-OneVariable($ss, $name, $type) {
+  $nv = [int]$ss.NumberOfVariables
+  $null = comCall $ss 'AddVariables' @([string]$name, $nv, 1)
+  $idx = $nv + 1
+  $t = 0
+  if ($null -ne $type) { $t = [int]$type }
+  if ($t -eq 1) { $null = comCall $ss 'VariableSetTextType' @($idx, 10) }
+  elseif ($t -ne 0) { $null = comSet $ss 'VariableType' @($idx, $t) }
+  return $idx
+}
+
+function Read-CaseNames($ss, $limit) {
+  $nc = [int]$ss.NumberOfCases
+  $n = $nc
+  if ($null -ne $limit -and [int]$limit -lt $nc) { $n = [int]$limit }
+  $out = [object[]]::new($n)
+  for ($i = 1; $i -le $n; $i++) {
+    $m = $null
+    try { $m = [string](comGet $ss 'CaseName' @($i)) } catch { $m = $null }
+    $out[$i - 1] = $m
+  }
+  return $out
+}
+
 # --- analysis result marshalling -----------------------------------------
 function Read-WholeSpreadsheet($doc) {
   $nc = [int](comGet $doc 'NumberOfCases' @())
@@ -410,6 +435,25 @@ try {
         break
       }
 
+      'addwrite' {
+        # Add one or more named variables and write their values in a single COM session.
+        $added = [object[]]::new(@($req.columns).Count)
+        $i = 0
+        foreach ($col in @($req.columns)) {
+          $name = [string]$col.name
+          if ($name -eq '') { throw 'addwrite column name is required' }
+          $type = 0
+          if ($null -ne $col.type) { $type = [int]$col.type }
+          $idx = Add-OneVariable $ss $name $type
+          $vals = @($col.values)
+          $w = Write-Variable $ss $idx $vals
+          $added[$i] = @{ index = $idx; name = [string](comGet $ss 'VariableName' @($idx)); written = $w.written }
+          $i++
+        }
+        $result = @{ variables = [int]$ss.NumberOfVariables; cases = [int]$ss.NumberOfCases; added = $added }
+        break
+      }
+
       'formula' {
         # Assign a formula to a variable (stored in its long name) and recompute it.
         $idx = Get-VarIndex $ss $req.variable
@@ -498,6 +542,92 @@ try {
         if ($null -ne $req.variables) { $nv = [int]$req.variables }
         $null = comCall $ss 'SetSize' @($nc, $nv)
         $result = @{ cases = [int]$ss.NumberOfCases; variables = [int]$ss.NumberOfVariables }
+        break
+      }
+
+      'case_names' {
+        $nc = [int]$ss.NumberOfCases
+        if ($null -ne $req.names) {
+          $arr = @($req.names)
+          $limit = $arr.Count
+          if ($limit -gt $nc) { $limit = $nc }
+          for ($i = 0; $i -lt $limit; $i++) {
+            $v = $arr[$i]
+            if ($null -eq $v) { continue }
+            $null = comSet $ss 'CaseName' @(($i + 1), [string]$v)
+          }
+        }
+        $showLimit = 200
+        if ($null -ne $req.limit) { $showLimit = [int]$req.limit }
+        $names = Read-CaseNames $ss $showLimit
+        $nonEmpty = 0
+        foreach ($n in $names) { if ($null -ne $n -and "$n" -ne '') { $nonEmpty++ } }
+        $result = @{ cases = $nc; count = $names.Count; named = $nonEmpty; names = $names }
+        break
+      }
+
+      'sort' {
+        $keys = @($req.variables)
+        if ($keys.Count -eq 0) { throw 'sort requires at least one variable' }
+        $orders = @()
+        if ($null -ne $req.order) { $orders = @($req.order) }
+        # apply from the least significant key to the most significant one
+        for ($k = $keys.Count - 1; $k -ge 0; $k--) {
+          $idx = Get-VarIndex $ss $keys[$k]
+          $ord = 0
+          if ($k -lt $orders.Count -and $null -ne $orders[$k]) {
+            $o = "$($orders[$k])"
+            if ($o -eq '1' -or $o -eq 'desc' -or $o -eq 'descending' -or $o -eq 'true') { $ord = 1 }
+          }
+          $type = Get-VarType $ss $idx
+          $by = 0
+          if ($type -eq 1) { $by = 1 }
+          $null = comCall $ss 'SortDataEx' @([object[]]@($idx), [object[]]@($ord), [object[]]@($by), $false, $true)
+        }
+        $preview = @()
+        $pc = [Math]::Min(5, [int]$ss.NumberOfCases)
+        for ($i = 1; $i -le $pc; $i++) {
+          $m = $null
+          try { $m = [string](comGet $ss 'CaseName' @($i)) } catch { $m = $null }
+          $preview += $m
+        }
+        $result = @{ cases = [int]$ss.NumberOfCases; variables = [int]$ss.NumberOfVariables; sortedBy = @($keys); firstCaseNames = $preview }
+        break
+      }
+
+      'select' {
+        # Keep only the 1-based case numbers listed in req.cases, rewriting every column.
+        if ($null -eq $req.cases) { throw 'select requires a case list' }
+        $keep = @($req.cases | ForEach-Object { [int]$_ })
+        $nv = [int]$ss.NumberOfVariables
+        $nc = [int]$ss.NumberOfCases
+        foreach ($c in $keep) {
+          if ($c -lt 1 -or $c -gt $nc) { throw "case index out of range: $c (sheet has $nc cases)" }
+        }
+        $keepNames = $true
+        if ($null -ne $req.caseNames -and $req.caseNames -eq $false) { $keepNames = $false }
+
+        $cols = [object[]]::new($nv)
+        for ($v = 1; $v -le $nv; $v++) {
+          $r = Read-Variable $ss $v $null $null
+          $filtered = [object[]]::new($keep.Count)
+          for ($j = 0; $j -lt $keep.Count; $j++) { $filtered[$j] = $r.values[$keep[$j] - 1] }
+          $cols[$v - 1] = $filtered
+        }
+        $names = $null
+        if ($keepNames) { $names = Read-CaseNames $ss $null }
+
+        $null = comCall $ss 'SetSize' @($keep.Count, $nv)
+        for ($v = 1; $v -le $nv; $v++) {
+          $null = Write-Variable $ss $v $cols[$v - 1]
+        }
+        if ($keepNames) {
+          for ($j = 0; $j -lt $keep.Count; $j++) {
+            $n = $names[$keep[$j] - 1]
+            if ($null -ne $n -and "$n" -ne '') { $null = comSet $ss 'CaseName' @(($j + 1), [string]$n) }
+          }
+        }
+        $result = @{ cases = [int]$ss.NumberOfCases; variables = [int]$ss.NumberOfVariables; kept = $keep.Count; removed = ($nc - $keep.Count) }
         break
       }
 

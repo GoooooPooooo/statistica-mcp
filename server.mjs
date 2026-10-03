@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url'
 const HERE = dirname(fileURLToPath(import.meta.url))
 const WORKER = join(HERE, 'sta.ps1')
 const SERVER_NAME = 'statistica-mcp'
-const SERVER_VERSION = '2.1.0'
+const SERVER_VERSION = '2.2.0'
 const DEFAULT_PROTOCOL = '2024-11-05'
 const TIMEOUT_MS = 600000
 
@@ -261,6 +261,18 @@ const ENUMS = {
   4601: {
     RegressionInput: { scRegRawData: 1073741824, scRegCorrelationMatrix: 1073741825 },
     RegressionModelBuilding: { scRegAlleffects: 1073741824, scRegStandard: 1073741825, scRegForwardStepwise: 1073741826, scRegBackwardStepwise: 1073741827 },
+  },
+  4100: {
+    'GLMAnalysisItem (first Run opens the specification dialog)': { GeneralLinearModels: 1 },
+  },
+  2101: {
+    'Extraction method (set the matching property to true on the second dialog)': {
+      PrincipalComponents: 1,
+      PrincipalAxisMethod: 1,
+      CentroidMethod: 1,
+      MaximumLikelihoodFactors: 1,
+      IteratedCommunalitiesMINRES: 1,
+    },
   },
 }
 
@@ -652,6 +664,151 @@ const TOOLS = [
     },
   },
   {
+    name: 'case_names',
+    description:
+      'Read (and optionally set) case names / text labels for the rows of a spreadsheet. When `names` is given they are written (one per case, starting at case 1).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Absolute path to the source file.' },
+        sheet: { type: ['string', 'integer'] },
+        names: { type: 'array', items: { type: 'string' }, description: 'Case names to assign (case 1, 2, ...). Omit to only read.' },
+        limit: { type: 'integer', minimum: 1, description: 'How many names to return. Default 200, all when reading named cases.' },
+        save: { type: 'string', description: 'Optional destination path to persist the result as .sta.' },
+      },
+      required: ['path'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'sort_data',
+    description:
+      'Sort a spreadsheet in place by one or more keys (case names move with their rows). `order` may be a single value or one per key: 0/asc or 1/desc.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Absolute path to the source file.' },
+        sheet: { type: ['string', 'integer'] },
+        variables: { type: 'array', items: { type: ['string', 'integer'] }, description: 'Sort key(s), most significant first.' },
+        order: {
+          type: ['integer', 'string', 'array'],
+          description: 'Ascending (0/"asc") or descending (1/"desc"). A single value or one per key.',
+        },
+        save: { type: 'string', description: 'Optional destination path to persist the result as .sta.' },
+      },
+      required: ['path', 'variables'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'select_cases',
+    description:
+      'Keep only the rows matching a condition and drop the rest (all columns are rewritten). Supports numeric and text comparisons; missing values can be matched with op "missing".',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Absolute path to the source file.' },
+        sheet: { type: ['string', 'integer'] },
+        variable: { type: ['string', 'integer'], description: 'Variable the condition is evaluated on.' },
+        op: {
+          type: 'string',
+          enum: ['gt', 'ge', 'lt', 'le', 'eq', 'ne', 'in', 'notin', 'missing', 'notmissing'],
+          description: 'Comparison operator. Default eq.',
+        },
+        value: { type: ['string', 'number', 'boolean'], description: 'Comparison value for gt/ge/lt/le/eq/ne.' },
+        values: { type: 'array', items: { type: ['string', 'number'] }, description: 'Value list for in/notin.' },
+        keepCaseNames: { type: 'boolean', description: 'Carry case names to the surviving rows. Default true.' },
+        save: { type: 'string', description: 'Optional destination path to persist the result as .sta.' },
+      },
+      required: ['path', 'variable', 'op'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'recode',
+    description:
+      'Recode the values of one variable using a mapping (old value -> new value), optionally sending every unlisted value to `default`. Missing values are preserved unless `missing` is given.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Absolute path to the source file.' },
+        sheet: { type: ['string', 'integer'] },
+        variable: { type: ['string', 'integer'], description: 'Variable to recode.' },
+        map: { type: 'object', description: 'Mapping old value -> new value (keys are compared as strings).', additionalProperties: true },
+        default: { type: ['string', 'number'], description: 'Value assigned to every unlisted, non-missing cell.' },
+        missing: { type: ['string', 'number'], description: 'Replacement for missing cells (default: leave missing).' },
+        save: { type: 'string', description: 'Optional destination path to persist the result as .sta.' },
+      },
+      required: ['path', 'variable', 'map'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'statistica_anova',
+    description:
+      'Analysis of variance via STATISTICA General Linear Models (module 4100 / ANOVA). `dependent` is the outcome; `between` lists factor/covariate effects. Returns the ANOVA table (UnivariateResults) and parameter estimates.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string' },
+        sheet: { type: ['string', 'integer'] },
+        dependent: { type: ['string', 'integer'], description: 'Dependent (outcome) variable.' },
+        between: {
+          type: 'array',
+          items: { type: ['string', 'integer'] },
+          description: 'Factors / effects entered in the model.',
+        },
+        method: {
+          type: 'string',
+          enum: ['standard', 'all_effects', 'forward', 'backward'],
+          description: 'Model-building method. Default standard.',
+        },
+      },
+      required: ['path', 'dependent', 'between'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'statistica_factor',
+    description:
+      'Factor analysis / principal components (module 2101). Extraction method defaults to PrincipalComponents; `factors` sets the requested number of factors. Returns eigenvalues, loadings and communalities.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string' },
+        sheet: { type: ['string', 'integer'] },
+        variables: { type: 'array', items: { type: ['string', 'integer'] } },
+        method: {
+          type: 'string',
+          enum: ['principal_components', 'principal_axis', 'centroid', 'maximum_likelihood', 'minres'],
+          description: 'Extraction method. Default principal_components.',
+        },
+        factors: { type: 'integer', minimum: 1, description: 'Number of factors to extract. Omit for the engine default.' },
+      },
+      required: ['path', 'variables'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'statistica_correlation_matrix',
+    description:
+      'Build lagged series products for a time series: for lags 1..lags it creates variables Lag1..LagK holding x(t)*x(t-lag) (correlation products), optionally smoothed with a moving average, and returns their preview. Use mode "shift" for plain lagged series.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string' },
+        sheet: { type: ['string', 'integer'] },
+        variable: { type: ['string', 'integer'], description: 'Source series.' },
+        lags: { type: 'integer', minimum: 1, description: 'Number of lag columns to build. Default 12.' },
+        mode: { type: 'string', enum: ['product', 'shift'], description: 'product = x(t)*x(t-lag) (default), shift = x(t-lag).' },
+        smooth: { type: 'integer', minimum: 2, description: 'Moving-average window applied to each new column.' },
+        prefix: { type: 'string', description: 'Name prefix for the new variables. Default "Lag".' },
+      },
+      required: ['path', 'variable'],
+      additionalProperties: false,
+    },
+  },
+  {
     name: 'describe_analysis',
     description:
       'Introspect a STATISTICA analysis dialog before driving it: lists every settable property and callable method, plus known enum constants. Use it to build a run_analysis request.',
@@ -943,6 +1100,114 @@ async function callTool(name, a) {
       return lines.join('\n')
     }
 
+    case 'case_names': {
+      const r = await runWorker({ cmd: 'case_names', path: requirePath(a), sheet: a.sheet, names: a.names, limit: a.limit, save: a.save, attach: a.attach })
+      const lines = [`Cases: ${r.cases}, named: ${r.named}`]
+      const preview = (r.names ?? []).filter((x) => x !== null && x !== '').slice(0, 20)
+      if (preview.length) lines.push(`names: ${preview.map((x) => JSON.stringify(x)).join(', ')}`)
+      if (a.names) lines.push(`assigned ${Array.isArray(a.names) ? a.names.length : 0} case name(s)`)
+      if (r.saved) lines.push(`Saved to ${r.saved}`)
+      return lines.join('\n')
+    }
+
+    case 'sort_data': {
+      if (!Array.isArray(a.variables) || a.variables.length === 0) throw new Error('`variables` must be a non-empty array')
+      const r = await runWorker({ cmd: 'sort', path: requirePath(a), sheet: a.sheet, variables: a.variables, order: a.order, save: a.save, attach: a.attach })
+      const lines = [`Sorted ${r.cases} cases x ${r.variables} variables by ${r.sortedBy.map((x) => JSON.stringify(x)).join(', ')}`]
+      if (r.firstCaseNames?.length) lines.push(`first cases: ${r.firstCaseNames.map((x) => JSON.stringify(x)).join(', ')}`)
+      if (r.saved) lines.push(`Saved to ${r.saved}`)
+      return lines.join('\n')
+    }
+
+    case 'select_cases': {
+      const read = await runWorker({ cmd: 'read', path: requirePath(a), sheet: a.sheet, variables: [a.variable], attach: a.attach })
+      const d = read.data?.[0]
+      if (!d) throw new Error(`could not read variable ${a.variable}`)
+      const isText = d.type === 1
+      const op = a.op ?? 'eq'
+      const values = d.values.map((v) => (isText ? (v === null ? null : String(v)) : v === null ? null : Number(v)))
+      const num = (x) => {
+        if (x === null || x === undefined) return null
+        const n = Number(x)
+        return Number.isNaN(n) ? null : n
+      }
+      const target = num(a.value)
+      const list = Array.isArray(a.values) ? a.values.map((x) => (isText ? String(x) : num(x))) : []
+      const keep = []
+      for (let i = 0; i < values.length; i++) {
+        const v = values[i]
+        let ok = false
+        switch (op) {
+          case 'missing':
+            ok = v === null
+            break
+          case 'notmissing':
+            ok = v !== null
+            break
+          case 'in':
+            ok = v !== null && list.some((t) => t === v)
+            break
+          case 'notin':
+            ok = v !== null && !list.some((t) => t === v)
+            break
+          default: {
+            if (v === null) break
+            const cv = isText ? String(a.value) : target
+            if (cv === null) break
+            switch (op) {
+              case 'gt':
+                ok = v > cv
+                break
+              case 'ge':
+                ok = v >= cv
+                break
+              case 'lt':
+                ok = v < cv
+                break
+              case 'le':
+                ok = v <= cv
+                break
+              case 'ne':
+                ok = v !== cv
+                break
+              case 'eq':
+              default:
+                ok = v === cv
+            }
+          }
+        }
+        if (ok) keep.push(i + 1)
+      }
+      if (keep.length === 0) throw new Error('select_cases matched 0 cases')
+      const r = await runWorker({ cmd: 'select', path: requirePath(a), sheet: a.sheet, cases: keep, caseNames: a.keepCaseNames, save: a.save, attach: a.attach })
+      const lines = [`Kept ${r.kept} of ${r.cases + r.removed} cases (${r.removed} removed); now ${r.cases} cases x ${r.variables} variables`]
+      if (r.saved) lines.push(`Saved to ${r.saved}`)
+      return lines.join('\n')
+    }
+
+    case 'recode': {
+      const read = await runWorker({ cmd: 'read', path: requirePath(a), sheet: a.sheet, variables: [a.variable], attach: a.attach })
+      const d = read.data?.[0]
+      if (!d) throw new Error(`could not read variable ${a.variable}`)
+      const isText = d.type === 1
+      const map = a.map ?? {}
+      const hasDefault = a.default !== undefined && a.default !== null
+      const hasMissing = a.missing !== undefined && a.missing !== null
+      const keyOf = (v) => (isText ? String(v) : String(Number(v)))
+      const out = d.values.map((v) => {
+        if (v === null || v === undefined) return hasMissing ? a.missing : null
+        const k = keyOf(v)
+        if (Object.prototype.hasOwnProperty.call(map, k)) return map[k]
+        if (hasDefault) return a.default
+        return v
+      })
+      const r = await runWorker({ cmd: 'write', path: requirePath(a), sheet: a.sheet, columns: [{ index: d.index, values: out }], save: a.save, attach: a.attach })
+      const changed = out.filter((v, i) => String(v) !== String(d.values[i])).length
+      const lines = [`Recoded #${d.index} ${d.cleanName || d.name}: ${changed} value(s) changed`]
+      if (r.saved) lines.push(`Saved to ${r.saved}`)
+      return lines.join('\n')
+    }
+
     case 'export_csv': {
       const r = await runWorker({ cmd: 'export_csv', path: requirePath(a), sheet: a.sheet, out: a.out })
       return `Exported to ${r.out} (${r.bytes} bytes)`
@@ -1223,6 +1488,103 @@ async function callTool(name, a) {
         }
       }
       return analysis(a, 1901, steps)
+    }
+
+    case 'statistica_anova': {
+      const dep = varSpec([a.dependent])
+      const between = varSpec(a.between)
+      if (!dep || !between) throw new Error('`dependent` and `between` are required')
+      const methodMap = {
+        all_effects: 'RegressionAllEffectsIncluded',
+        forward: 'ForwardStepwiseRegression',
+        backward: 'BackwardStepwiseRegression',
+      }
+      const opts = { Variables: `${dep} | ${between}` }
+      const methodProp = methodMap[a.method ?? 'standard']
+      if (methodProp) opts[methodProp] = true
+      const steps = [
+        { set: { GLMAnalysisItem: 1 } },
+        { run: true },
+        { set: opts },
+        { run: true },
+        { result: 'UnivariateResults' },
+        { result: 'Coefficients' },
+      ]
+      return analysis(a, 4100, steps)
+    }
+
+    case 'statistica_factor': {
+      const vs = varSpec(a.variables)
+      if (!vs) throw new Error('`variables` is required')
+      const methodMap = {
+        principal_components: 'PrincipalComponents',
+        principal_axis: 'PrincipalAxisMethod',
+        centroid: 'CentroidMethod',
+        maximum_likelihood: 'MaximumLikelihoodFactors',
+        minres: 'IteratedCommunalitiesMINRES',
+      }
+      const methodProp = methodMap[a.method ?? 'principal_components']
+      const extract = { [methodProp]: true }
+      if (a.factors !== undefined) extract.NumberOfFactors = a.factors
+      const steps = [
+        { set: { Variables: vs } },
+        { run: true },
+        { set: extract },
+        { run: true },
+        { result: 'Eigenvalues' },
+        { result: 'FactorLoadings' },
+        { result: 'Communalities' },
+      ]
+      return analysis(a, 2101, steps)
+    }
+
+    case 'statistica_correlation_matrix': {
+      const lags = a.lags ?? 12
+      const prefix = a.prefix ?? 'Lag'
+      const mode = a.mode ?? 'product'
+      const read = await runWorker({ cmd: 'read', path: requirePath(a), sheet: a.sheet, variables: [a.variable], attach: a.attach })
+      const d = read.data?.[0]
+      if (!d) throw new Error(`could not read variable ${a.variable}`)
+      if (d.type === 1) throw new Error('statistica_correlation_matrix needs a numeric series')
+      const n = d.values.length
+      const x = d.values.map((v) => (v === null || v === undefined ? null : Number(v)))
+      const cols = []
+      for (let L = 1; L <= lags; L++) {
+        const vals = new Array(n).fill(null)
+        for (let i = L; i < n; i++) {
+          if (x[i] === null || x[i - L] === null) continue
+          vals[i] = mode === 'shift' ? x[i - L] : x[i] * x[i - L]
+        }
+        if (a.smooth && a.smooth >= 2) {
+          const w = a.smooth
+          const sm = new Array(n).fill(null)
+          for (let i = 0; i < n; i++) {
+            let sum = 0
+            let cnt = 0
+            for (let k = 0; k < w; k++) {
+              const j = i - k
+              if (j < 0) continue
+              if (vals[j] === null) { cnt = 0; sum = 0; break }
+              sum += vals[j]
+              cnt++
+            }
+            if (cnt === w) sm[i] = sum / w
+          }
+          cols.push({ name: `${prefix}${L}`, type: 0, values: sm })
+        } else {
+          cols.push({ name: `${prefix}${L}`, type: 0, values: vals })
+        }
+      }
+      const r = await runWorker({ cmd: 'addwrite', path: requirePath(a), sheet: a.sheet, columns: cols, save: a.save, attach: a.attach })
+      const lines = [`Added ${r.added.length} lag column(s) (${mode}${a.smooth ? `, SMA(${a.smooth})` : ''}); spreadsheet now ${r.variables} variables`]
+      for (const c of r.added) lines.push(`  #${c.index} ${c.name}: ${c.written} value(s)`)
+      const preview = cols.slice(0, 3).map((c) => {
+        const vals = c.values.filter((v) => v !== null).slice(0, 6)
+        return `  ${c.name}: ${vals.map((v) => fmt(v)).join(', ')}`
+      })
+      if (preview.length) lines.push('preview:', ...preview)
+      if (r.saved) lines.push(`Saved to ${r.saved}`)
+      return lines.join('\n')
     }
 
     case 'describe_analysis': {
