@@ -68,7 +68,7 @@ function Disable-Alerts($app) {
 # SaveChanges = $false. Only used in headless mode, where results were already
 # returned to the caller and nothing must be persisted.
 function Close-AllDocuments($app) {
-  foreach ($coll in @('Graphs', 'Workbooks', 'Spreadsheets', 'Reports')) {
+  foreach ($coll in @('Macros', 'Graphs', 'Workbooks', 'Spreadsheets', 'Reports')) {
     try {
       $c = $app.$coll
       for ($i = [int]$c.Count; $i -ge 1; $i--) {

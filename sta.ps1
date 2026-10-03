@@ -25,6 +25,7 @@ $CB = [Microsoft.VisualBasic.CallType]
 . (Join-Path $PSScriptRoot 'worker\commands\structure.ps1')
 . (Join-Path $PSScriptRoot 'worker\commands\io.ps1')
 . (Join-Path $PSScriptRoot 'worker\commands\analysis.ps1')
+. (Join-Path $PSScriptRoot 'worker\commands\macro.ps1')
 . (Join-Path $PSScriptRoot 'worker\screenshot.ps1')
 
 # --- request handling -----------------------------------------------------

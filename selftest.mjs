@@ -210,6 +210,7 @@ await check('value labels', 'value_labels', { path: WORK, variable: 2, labels: {
 // --- lab-3 building blocks ------------------------------------------------
 await check('time series: shift', 'statistica_time_series', { path: WORK, procedure: 'shift', variables: [11], lag: 1 }, { mustInclude: 'SaveVariables' })
 await check('fit line', 'add_fit_line', { path: WORK, y: 11 }, { mustInclude: 'added' })
+await check('run SVB macro', 'run_macro', { path: WORK, code: 'Sub Main\n  Dim s As Spreadsheet\n  Set s = ActiveSpreadsheet\n  s.Cells(1,1) = 777\nEnd Sub' }, { mustInclude: 'Ran macro' })
 await check('3D surface graph', 'statistica_graph', { path: WORK, module: 11021, variables: '2 3 4', properties: { GraphType: 6 }, out: G3D }, { mustInclude: 'saved graphs' })
 await check('multi-line graph', 'statistica_graph', { path: WORK, module: 11012, variables: '2 3', properties: { GraphType: 1 }, out: GLINE }, { mustInclude: 'saved graphs' })
 console.log(`      3d on disk: ${existsSync(G3D)} (${existsSync(G3D) ? readFileSync(G3D).length : 0} bytes)`)

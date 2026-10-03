@@ -266,6 +266,22 @@ const tools = [
       additionalProperties: false,
     },
   },
+  {
+    name: 'run_macro',
+    description:
+      'Execute STATISTICA BASIC (SVB) source code (or a .svb file) with the opened spreadsheet as ActiveSpreadsheet, then optionally save the result. Use it for custom recurrent models (DWLS/Lowess/EWPR) supplied as SVB macros.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Spreadsheet to expose as ActiveSpreadsheet inside the macro.' },
+        sheet: { type: ['string', 'integer'] },
+        code: { type: 'string', description: 'SVB source code, e.g. "Sub Main ... End Sub".' },
+        source: { type: 'string', description: 'Path to a .svb file (alternative to code).' },
+        save: { type: 'string', description: 'Optional destination .sta path to persist the modified sheet.' },
+      },
+      additionalProperties: false,
+    },
+  },
 ]
 
 const handlers = {
@@ -698,6 +714,14 @@ const handlers = {
     const xlabel = xd ? xd.cleanName || xd.name : 'case number'
     const lines = [`Fit ${yd.cleanName || yd.name} on ${xlabel}: y = ${fmt(intercept)} + ${fmt(slope)}·x`]
     lines.push(`R² = ${fmt(r2)}; added ${r.added[0].name} (#${r.added[0].index})`)
+    if (r.saved) lines.push(`Saved to ${r.saved}`)
+    return lines.join('\n')
+  },
+
+  async run_macro(a) {
+    if (!a.code && !a.source) throw new Error('`code` or `source` is required')
+    const r = await runWorker({ cmd: 'macro', path: a.path, sheet: a.sheet, code: a.code, source: a.source, save: a.save, attach: a.attach })
+    const lines = [`Ran macro "${r.macro}"`]
     if (r.saved) lines.push(`Saved to ${r.saved}`)
     return lines.join('\n')
   },
