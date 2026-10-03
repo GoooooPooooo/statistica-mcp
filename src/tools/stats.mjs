@@ -191,6 +191,21 @@ const tools = [
     },
   },
   {
+    name: 'statistica_cluster',
+    description:
+      'Hierarchical cluster analysis (module 2201). `variables` are the variables to cluster; returns cluster membership, the amalgamation schedule and descriptive statistics.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string' },
+        sheet: { type: ['string', 'integer'] },
+        variables: { type: 'array', items: { type: ['string', 'integer'] }, description: 'Variables to cluster.' },
+      },
+      required: ['path', 'variables'],
+      additionalProperties: false,
+    },
+  },
+  {
     name: 'statistica_factor',
     description:
       'Factor analysis / principal components (module 2101). Extraction method defaults to PrincipalComponents; `factors` sets the requested number of factors. Returns eigenvalues, loadings and communalities.',
@@ -510,6 +525,20 @@ const handlers = {
       { result: 'Coefficients' },
     ]
     return analysis(a, 4100, steps)
+  },
+
+  async statistica_cluster(a) {
+    const vs = varSpec(a.variables)
+    if (!vs) throw new Error('`variables` is required')
+    const steps = [
+      { run: true },
+      { set: { Variables: vs } },
+      { run: true },
+      { result: 'AmalgamationSchedule' },
+      { result: 'DistanceMatrix' },
+      { result: 'DescriptiveStatistics' },
+    ]
+    return analysis(a, 2201, steps)
   },
 
   async statistica_factor(a) {

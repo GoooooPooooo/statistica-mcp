@@ -4,6 +4,8 @@ import { requirePath } from '../util.mjs'
 import { fmt, numify } from '../format.mjs'
 import { TYPE_NAME } from '../constants.mjs'
 
+const MEAS = { 0: 'unspecified', 1: 'auto', 2: 'continuous', 3: 'categorical', 4: 'ordinal' }
+
 const tools = [
   {
     name: 'statistica_info',
@@ -56,6 +58,19 @@ const tools = [
     },
   },
   {
+    name: 'list_sheets',
+    description: 'List the sheets inside a .sta/.stw file (index, name, size) without loading variable data.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Absolute path to a .sta or .stw file.' },
+        sheet: { type: ['string', 'integer'], description: 'Optional sheet to mark active (name or 1-based index).' },
+      },
+      required: ['path'],
+      additionalProperties: false,
+    },
+  },
+  {
     name: 'describe_analysis',
     description:
       'Introspect a STATISTICA analysis dialog before driving it: lists every settable property and callable method, plus known enum constants. Use it to build a run_analysis request.',
@@ -91,8 +106,9 @@ const handlers = {
     lines.push('', 'idx  name                       type     len  measurement  missing      long name / formula', '---  --------------------------  -------  ---  -----------  -----------  --------------------')
     for (const v of r.varInfo) {
       const md = v.missingValue === null || v.missingValue === undefined ? '' : fmt(v.missingValue)
+      const meas = MEAS[v.measurementType] ?? v.measurementType
       lines.push(
-        `${String(v.index).padEnd(4)}${(v.cleanName || v.name).slice(0, 26).padEnd(28)}${TYPE_NAME[v.type].padEnd(9)}${String(v.typeLength).padEnd(4)}${String(v.measurementType).padEnd(13)}${String(md).padEnd(13)}${v.longName}`,
+        `${String(v.index).padEnd(4)}${(v.cleanName || v.name).slice(0, 26).padEnd(28)}${TYPE_NAME[v.type].padEnd(9)}${String(v.typeLength).padEnd(4)}${String(meas).padEnd(13)}${String(md).padEnd(13)}${v.longName}`,
       )
     }
     return lines.join('\n')
@@ -115,6 +131,13 @@ const handlers = {
       const miss = vals.filter((v) => v === null).length
       lines.push(`  missing: ${miss}`)
     }
+    return lines.join('\n')
+  },
+
+  async list_sheets(a) {
+    const r = await runWorker({ cmd: 'sheets', path: requirePath(a), sheet: a.sheet, attach: a.attach })
+    const lines = [`${r.count} sheet(s); active: ${r.active}`]
+    for (const s of r.sheets) lines.push(`  ${String(s.index).padEnd(3)}${s.name}  [${s.cases} x ${s.variables}]`)
     return lines.join('\n')
   },
 

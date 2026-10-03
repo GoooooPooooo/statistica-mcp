@@ -1,5 +1,5 @@
 export const SERVER_NAME = 'statistica-mcp'
-export const SERVER_VERSION = '2.2.0'
+export const SERVER_VERSION = '2.3.0'
 export const DEFAULT_PROTOCOL = '2024-11-05'
 export const TIMEOUT_MS = 600000
 

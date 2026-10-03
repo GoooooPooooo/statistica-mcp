@@ -197,6 +197,45 @@ const tools = [
       additionalProperties: false,
     },
   },
+  {
+    name: 'set_measurement',
+    description:
+      'Set the measurement level of a variable (auto/continuous/categorical/ordinal). STATISTICA uses it to treat the variable as a factor or a covariate in analysis.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Absolute path to the source file.' },
+        sheet: { type: ['string', 'integer'] },
+        variable: { type: ['string', 'integer'], description: 'Variable name or 1-based index.' },
+        type: {
+          type: 'string',
+          enum: ['unspecified', 'auto', 'continuous', 'categorical', 'ordinal'],
+          description: 'Measurement level.',
+        },
+        save: { type: 'string', description: 'Optional destination path to persist the result as .sta.' },
+      },
+      required: ['path', 'variable', 'type'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'value_labels',
+    description:
+      'Attach or clear text labels for the numeric values of a variable. `labels` maps a numeric value to a label string or an object {label, description}; `clear` removes existing labels first.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Absolute path to the source file.' },
+        sheet: { type: ['string', 'integer'] },
+        variable: { type: ['string', 'integer'], description: 'Variable name or 1-based index.' },
+        labels: { type: 'object', additionalProperties: true, description: 'Map of numeric value -> label string or {label, description}.' },
+        clear: { type: 'boolean', description: 'Remove existing value labels before applying. Default false.' },
+        save: { type: 'string', description: 'Optional destination path to persist the result as .sta.' },
+      },
+      required: ['path', 'variable'],
+      additionalProperties: false,
+    },
+  },
 ]
 
 const handlers = {
@@ -370,6 +409,22 @@ const handlers = {
     const r = await runWorker({ cmd: 'write', path: requirePath(a), sheet: a.sheet, columns: [{ index: d.index, values: out }], save: a.save, attach: a.attach })
     const changed = out.filter((v, i) => String(v) !== String(d.values[i])).length
     const lines = [`Recoded #${d.index} ${d.cleanName || d.name}: ${changed} value(s) changed`]
+    if (r.saved) lines.push(`Saved to ${r.saved}`)
+    return lines.join('\n')
+  },
+
+  async set_measurement(a) {
+    const r = await runWorker({ cmd: 'set_measurement', path: requirePath(a), sheet: a.sheet, variable: a.variable, type: a.type, save: a.save, attach: a.attach })
+    const names = ['unspecified', 'auto', 'continuous', 'categorical', 'ordinal']
+    const lines = [`#${r.index} ${r.name}: measurement = ${names[r.measurementType] ?? r.measurementType}`]
+    if (r.saved) lines.push(`Saved to ${r.saved}`)
+    return lines.join('\n')
+  },
+
+  async value_labels(a) {
+    const r = await runWorker({ cmd: 'labels', path: requirePath(a), sheet: a.sheet, variable: a.variable, labels: a.labels, clear: a.clear, save: a.save, attach: a.attach })
+    const lines = [`#${r.index} ${r.name}: ${r.applied.length} label(s) applied, ${r.count ?? '?'} total`]
+    for (const l of r.applied) lines.push(`  ${fmt(l.value)} = ${JSON.stringify(l.label)}`)
     if (r.saved) lines.push(`Saved to ${r.saved}`)
     return lines.join('\n')
   },

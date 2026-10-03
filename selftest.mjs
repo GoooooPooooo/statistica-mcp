@@ -25,7 +25,8 @@ const XLSX = join(process.env.TEMP, 'sta-selftest-out.xlsx')
 const SAVED = join(process.env.TEMP, 'sta-selftest-saved.sta')
 const IMPORT_CSV = join(process.env.TEMP, 'sta-selftest-import.csv')
 const GRAPH_PNG = join(process.env.TEMP, 'sta-selftest-graph.png')
-for (const f of [WORK, WORK2, CSV, CSV2, XLSX, SAVED, IMPORT_CSV, GRAPH_PNG]) rmSync(f, { force: true })
+const GRAPH_PDF = join(process.env.TEMP, 'sta-selftest-graph.pdf')
+for (const f of [WORK, WORK2, CSV, CSV2, XLSX, SAVED, IMPORT_CSV, GRAPH_PNG, GRAPH_PDF]) rmSync(f, { force: true })
 copyFileSync(SRC, WORK)
 copyFileSync(SRC, WORK2)
 writeFileSync(IMPORT_CSV, 'x;y;label\n1;2.5;a\n2;3.1;b\n3;4.7;c\n', 'utf8')
@@ -159,6 +160,8 @@ await check(
 await check('time series: spectral', 'statistica_time_series', { path: WORK, procedure: 'spectral', variables: [2] }, { mustInclude: 'Frequency' })
 await check('graph build + export png', 'statistica_graph', { path: WORK, module: 11003, variables: '2 | 11', out: GRAPH_PNG }, { mustInclude: 'saved graphs' })
 console.log(`      png on disk: ${existsSync(GRAPH_PNG)} (${existsSync(GRAPH_PNG) ? readFileSync(GRAPH_PNG).length : 0} bytes)`)
+await check('graph export pdf', 'statistica_graph', { path: WORK, module: 11003, variables: '2 | 11', out: GRAPH_PDF }, { mustInclude: '.pdf' })
+console.log(`      pdf on disk: ${existsSync(GRAPH_PDF)} (${existsSync(GRAPH_PDF) ? readFileSync(GRAPH_PDF).length : 0} bytes)`)
 await check('time series: smoothing', 'statistica_time_series', { path: WORK, procedure: 'smoothing', variables: [2], window: 3 }, { mustInclude: 'SaveVariables' })
 await check('t-test (dependent)', 'statistica_t_test', { path: WORK, kind: 'dependent', variables: [2, 3] }, { mustInclude: 'Confidence' })
 
@@ -194,6 +197,10 @@ await check('select cases (non-missing)', 'select_cases', { path: WORK2, variabl
 await check('ANOVA / GLM', 'statistica_anova', { path: WORK, dependent: 2, between: [1] }, { mustInclude: 'UnivariateResults' })
 await check('factor analysis', 'statistica_factor', { path: WORK, variables: [2, 3, 4], factors: 2 }, { mustInclude: 'Eigenvalues' })
 await check('lagged correlation matrix', 'statistica_correlation_matrix', { path: WORK, variable: 2, lags: 3 }, { mustInclude: 'Lag1' })
+await check('cluster analysis', 'statistica_cluster', { path: WORK, variables: [2, 3, 4] }, { mustInclude: 'AmalgamationSchedule' })
+await check('list sheets', 'list_sheets', { path: WORK }, { mustInclude: 'sheet(s)' })
+await check('set measurement level', 'set_measurement', { path: WORK, variable: 2, type: 'categorical' }, { mustInclude: 'categorical' })
+await check('value labels', 'value_labels', { path: WORK, variable: 2, labels: { 112: 'LOW', 118: 'MID' } }, { mustInclude: 'label(s) applied' })
 
 console.log(`\n${'='.repeat(60)}\nresult: ${pass} passed, ${fail} failed\n${'='.repeat(60)}`)
 if (failures.length) {
@@ -202,5 +209,5 @@ if (failures.length) {
 }
 
 p.stdin.end()
-for (const f of [WORK, WORK2, CSV, CSV2, XLSX, SAVED, IMPORT_CSV, GRAPH_PNG]) rmSync(f, { force: true })
+for (const f of [WORK, WORK2, CSV, CSV2, XLSX, SAVED, IMPORT_CSV, GRAPH_PNG, GRAPH_PDF]) rmSync(f, { force: true })
 process.exit(fail > 0 ? 1 : 0)

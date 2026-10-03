@@ -246,3 +246,58 @@ function Invoke-select($app, $ss, $req) {
   }
   return @{ cases = [int]$ss.NumberOfCases; variables = [int]$ss.NumberOfVariables; kept = $keep.Count; removed = ($nc - $keep.Count) }
 }
+
+function Invoke-set_measurement($app, $ss, $req) {
+  $idx = Get-VarIndex $ss $req.variable
+  $map = @{ unspecified = 0; auto = 1; continuous = 2; categorical = 3; ordinal = 4 }
+  $t = $req.type
+  if ($null -eq $t) { throw 'type is required' }
+  if ($t -is [string]) {
+    $key = $t.ToLower()
+    if ($map.ContainsKey($key)) { $t = $map[$key] }
+    elseif ($t -match '^\d+$') { $t = [int]$t }
+    else { throw "unknown measurement type: $($req.type) (use unspecified/auto/continuous/categorical/ordinal)" }
+  }
+  $t = [int]$t
+  if ($t -lt 0 -or $t -gt 4) { throw "measurement type out of range: $t" }
+  $null = comSet $ss 'VariableMeasurementType' @($idx, $t)
+  $now = [int](comGet $ss 'VariableMeasurementType' @($idx, $true))
+  return @{ index = $idx; name = [string](comGet $ss 'VariableName' @($idx)); measurementType = $now }
+}
+
+function Invoke-labels($app, $ss, $req) {
+  $idx = Get-VarIndex $ss $req.variable
+  $applied = @()
+  if ($req.clear) {
+    try { $null = comCall $ss 'RemoveAllLabels' @($idx) } catch { }
+  }
+  if ($null -ne $req.labels) {
+    foreach ($p in $req.labels.PSObject.Properties) {
+      $num = [double]::Parse($p.Name, $inv)
+      $label = ''
+      $desc = ''
+      $val = $p.Value
+      if ($val -is [string]) { $label = [string]$val }
+      elseif ($null -ne $val) {
+        if ($null -ne $val.label) { $label = [string]$val.label }
+        if ($null -ne $val.description) { $desc = [string]$val.description }
+      }
+      if ($label -eq '' -and $desc -eq '') { continue }
+      $null = comCall $ss 'SetTextLabel' @($idx, $num, $label, $desc)
+      $applied += @{ value = $num; label = $label }
+    }
+  }
+  $count = $null
+  try { $count = [int](comGet $ss 'NumberOfTextLabels' @($idx)) } catch { $count = $null }
+  return @{ index = $idx; name = [string](comGet $ss 'VariableName' @($idx)); count = $count; applied = $applied }
+}
+
+function Invoke-sheets($app, $ss, $req) {
+  $sheets = @()
+  $n = [int]$app.Spreadsheets.Count
+  for ($i = 1; $i -le $n; $i++) {
+    $s = $app.Spreadsheets.Item($i)
+    $sheets += @{ index = $i; name = [string]$s.Name; cases = [int]$s.NumberOfCases; variables = [int]$s.NumberOfVariables }
+  }
+  return @{ count = $n; active = $script:sheetName; sheets = $sheets }
+}

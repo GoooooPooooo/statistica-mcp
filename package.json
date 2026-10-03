@@ -1,6 +1,6 @@
 {
   "name": "statistica-mcp",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "Zero-dependency MCP server driving STATISTICA 12 through its COM automation interface: edit .sta/.stw data and run STATISTICA analysis procedures",
   "type": "module",
   "private": true,
