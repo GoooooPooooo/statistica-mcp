@@ -73,7 +73,7 @@ $app.Quit()
 node selftest.mjs "C:\путь\к\LAB3.sta"
 ```
 
-Скрипт создаёт временную копию файла, прогоняет **45 проверок** (все инструменты, включая анализы, формулы, правку данных, уровни измерения, метки значений, ANOVA, кластерный и факторный анализ, экспорт PNG/PDF/CSV/XLSX, скриншот окна и импорт) и печатает результат. Исходный файл не изменяется.
+Скрипт создаёт временную копию файла, прогоняет **49 проверок** (все инструменты, включая анализы, формулы, правку данных, уровни измерения, метки значений, запаздывание и сглаживание ВР, ANOVA, кластерный и факторный анализ, 2D/3D-графики, fit-линию, экспорт PNG/PDF/CSV/XLSX, скриншот окна и импорт) и печатает результат. Исходный файл не изменяется.
 
 ---
 
@@ -131,7 +131,7 @@ node scripts/check.mjs --external # дополнительно prettier / eslint
 | `import_data` | Импорт текста/Excel в STATISTICA. |
 | `export_csv` | Экспорт листа штатным CSV-писателем. |
 | `save_spreadsheet` | Сохранение листа в новый файл (`.sta`, `.stw`, `.csv`, `.xlsx`). |
-| `statistica_graph` | Построение графика (`module` + `variables`) и экспорт в `.png`/`.jpg`/`.emf` (`out`). |
+| `statistica_graph` | Построение графика (`module` + `variables`) и экспорт в `.png`/`.jpg`/`.emf` (`out`). Через `properties.GraphType`: `1` у 11012 — один график с несколькими линиями, `6` у 11021 — 3D Surface. |
 | `statistica_screenshot` | Показать окно STATISTICA и снять экран для отчёта (`mode`: `screen` — весь экран по умолчанию, `window` — окно приложения, `document` — активная таблица/график). |
 
 ### Режим «вживую» (`attach`)
@@ -157,7 +157,8 @@ write_variables { "path": "...\\LAB3.sta", "columns": [{"index": 5, "values": [ 
 | `statistica_cluster` | Иерархический кластерный анализ (модуль 2201): расписание объединений, матрица расстояний, описательные статистики. |
 | `statistica_factor` | Факторный анализ / метод главных компонент (модуль 2101): собственные значения, нагрузки, общности. |
 | `statistica_correlation_matrix` | Строит лаговые произведения ряда (`Lag1..LagK` = `x(t)*x(t-L)`, опц. SMA) или сдвинутые ряды (`mode:"shift"`). |
-| `statistica_time_series` | Временные ряды: `descriptives`, `autocorrelation`, `partial_autocorrelation`, `cross_correlation`, `arima`, `spectral`, `smoothing`, `exponential_smoothing`, `differencing`, `seasonal_decomposition`. |
+| `statistica_time_series` | Временные ряды: `descriptives`, `autocorrelation`, `partial_autocorrelation`, `cross_correlation`, `arima`, `spectral`, `smoothing` (центрир. MA), `shift` (запаздывание/опережение), `exponential_smoothing`, `differencing`, `seasonal_decomposition`. |
+| `add_fit_line` | МНК-линия `y` по `x` (по умолчанию по номеру наблюдения) — пишет fitted-значения новой переменной (замена интерактивного fit на графике). |
 | `statistica_graph` | График и его экспорт в изображение (`.png`/`.jpg`/`.emf`); `.pdf` собирается встроенным конвертером PNG→PDF. |
 
 ### Универсальный движок
@@ -347,7 +348,7 @@ statistica/
       structure.ps1              describe, read, write, sort, select, recode, levels, labels, sheets
       io.ps1                     export_csv, save_as, import (ExportTextEx/ExportXLS)
       analysis.ps1               describe_analysis, analysis
-  selftest.mjs                   самопроверка (45 проверок)
+  selftest.mjs                   самопроверка (49 проверок)
   scripts/
     check.mjs                    линтер: парсинг, импорты, стиль (--fix, --strict, --external)
   .editorconfig                  правила форматирования

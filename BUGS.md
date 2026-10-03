@@ -76,6 +76,11 @@
 | Повтор COM | `New-ComApp` (3 попытки) | Зависший экземпляр даёт разовый `E_FAIL`; создание повторяется. |
 | DPI-awareness | `SetProcessDPIAware` в начале воркера | Без него `Screen.Bounds`/`CopyFromScreen` давали 2560×1359 вместо 5120×2718 — кадр обрезался. |
 | Активация окна | `ShowWindow` (restore+maximize), `AppActivate`, `SwitchToThisWindow` | `SetForegroundWindow` игнорируется для свёрнутого окна; снимок — весь `VirtualScreen`, ответ предупреждает, если фокус не получен. |
+| Запаздывание ряда | `ShiftSeriesForward` + `LagForShiftingSeriesForward` | `statistica_time_series procedure=shift` (есть и `direction=back`). |
+| Центрированное SMA | `NPointsMovingAverage` + `ComputeMovingAverageFromPriorValues=false` | Окно = период; `prior=true` — нецентрированное. |
+| Fit-линия | МНК в Node → `addwrite` | `add_fit_line`: fitted-значения пишутся переменной, рисуются рядом с данными. |
+| Совмещённый и 3D-график | `properties.GraphType` | 11012 `GraphType=1` — один график с несколькими линиями; 11021 `GraphType=6` — Surface. |
+| TS-мультиграфик | `PlotMultipleVariables` | *Отвергнуто:* сеттер роняет STATISTICA (RPC unavailable); обход — 11012 `GraphType=1`. |
 
 ### Почему правка данных делается в одном вызове воркера
 
