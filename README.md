@@ -94,14 +94,27 @@ node scripts/check.mjs --external # дополнительно prettier / eslint
 
 ## Архитектура
 
-```
-агент  ──JSON-RPC 2.0 (stdio)──▶  server.mjs  ──запуск процесса──▶  sta.ps1  ──COM──▶  statist.exe
+Подробное описание устройства — в отдельном файле
+[`ARCHITECTURE.md`](ARCHITECTURE.md): схема компонентов, жизненный цикл вызова
+инструмента, режимы работы и особенности COM.
+
+```mermaid
+graph LR
+  A["Агент<br/>opencode / Claude"] -->|"JSON-RPC 2.0 (stdio)"| B["MCP-сервер<br/>server.mjs + src/*"]
+  B -->|"spawn + временные JSON-файлы"| C["Воркер<br/>sta.ps1 + worker/*"]
+  C -->|"COM (CallByName)"| D["STATISTICA 12<br/>statist.exe"]
+  D -->|"лист / граф / таблица"| C
+  C -->|"result JSON"| B
+  B -->|"content: text"| A
 ```
 
-- **`server.mjs`** — тонкая точка входа. Разбор протокола и логика разложены по `src/`: `protocol.mjs` (JSON-RPC), `worker.mjs` (запуск процесса), `modules.mjs` (таблицы модулей и enum-констант), `format.mjs` (форматирование результатов), `analysis.mjs`, а инструменты — по группам в `src/tools/` (схема и обработчик лежат рядом). На stdout пишет только JSON-RPC, все логи в stderr.
-- **`sta.ps1`** — точка входа воркера. Читает JSON-запрос из файла, выполняет команду, пишет JSON-ответ в файл. Код разложен по `worker/` (`com.ps1`, `sheet.ps1`, `result.ps1`) и `worker/commands/` (по одной функции `Invoke-<cmd>` на команду). Обмен через файлы снимает проблемы с кодировками кириллицы в PowerShell 5.1.
-- Каждый вызов инструмента порождает **новый** процесс `statist.exe` и закрывает его. Состояние между вызовами не сохраняется (stateless), поэтому изменения на диске требуют явного параметра `save`.
-- Один вызов = один файл `.sta`.
+- **`server.mjs`** — тонкая точка входа; разбор протокола и логика — в `src/`,
+  инструменты — по группам в `src/tools/`. На stdout только JSON-RPC, логи в
+  stderr.
+- **`sta.ps1`** — точка входа воркера; код — в `worker/` и
+  `worker/commands/` (по функции `Invoke-<cmd>` на команду).
+- Один вызов = один файл `.sta`; по умолчанию stateless, режим `attach`
+  работает с открытым окном.
 
 ---
 
@@ -134,6 +147,7 @@ node scripts/check.mjs --external # дополнительно prettier / eslint
 | `statistica_graph` | Построение графика (`module` + `variables`) и экспорт в `.png`/`.jpg`/`.emf` (`out`). Через `properties.GraphType`: `1` у 11012 — один график с несколькими линиями, `6` у 11021 — 3D Surface. |
 | `statistica_screenshot` | Показать окно STATISTICA и снять экран для отчёта (`mode`: `screen` — весь экран по умолчанию, `window` — окно приложения, `document` — активная таблица/график). |
 | `statistica_open` | Запустить или переиспользовать видимое окно STATISTICA (с опциональным файлом) и оставить его открытым — для работы через `attach` без перезапуска приложения. |
+| `statistica_dialog` | Открыть диалог модуля анализа и снять саму панель пакета (Time Series/Forecasting, Transformations и др.); `run:true` — панель второго уровня, `mode:screen` — полный экран. Приложение не закрывается. |
 
 ### Режим «вживую» (`attach`)
 
@@ -161,6 +175,7 @@ write_variables { "path": "...\\LAB3.sta", "columns": [{"index": 5, "values": [ 
 | `statistica_cluster` | Иерархический кластерный анализ (модуль 2201): расписание объединений, матрица расстояний, описательные статистики. |
 | `statistica_factor` | Факторный анализ / метод главных компонент (модуль 2101): собственные значения, нагрузки, общности. |
 | `statistica_correlation_matrix` | Строит лаговые произведения ряда (`Lag1..LagK` = `x(t)*x(t-L)`, опц. SMA) или сдвинутые ряды (`mode:"shift"`). |
+| `add_lag_column` | Считает оценку на одном лаге (`x(t)*x(t-lag)` или сдвиг) и дописывает **одну** колонку `Lag_m` в целевой лист — для пошагового построения матрицы. |
 | `statistica_time_series` | Временные ряды: `descriptives`, `autocorrelation`, `partial_autocorrelation`, `cross_correlation`, `arima`, `spectral`, `smoothing` (центрир. MA), `shift`, `exponential_smoothing` (модели `simple`, `holt`, `holt_additive` (Тейл–Вейдж), `holt_multiplicative` (Уинтерс), `damped`, `exponential_trend`), `differencing`, `seasonal_decomposition`. |
 | `add_fit_line` | МНК-аппроксимация `y` по `x` (по умолчанию по номеру наблюдения), степень `degree` (1..6) — пишет fitted-значения новой переменной (замена интерактивного fit на графике). |
 | `run_macro` | Выполнить код STATISTICA BASIC (SVB) или `.svb`-файл, где `ActiveSpreadsheet` — открытый лист (для рекуррентных моделей DWLS/Lowess/EWPR из ЛР6–8). |
@@ -340,8 +355,8 @@ statistica/
       index.mjs                  сборка инструментов и обработчиков
       inspect.mjs                info, list, describe, list_sheets, read, describe_analysis
       edit.mjs                   write, formula, add/rename/delete, sort/select/recode, levels/labels
-      io.mjs                     export_csv, save_spreadsheet, import_data, screenshot
-      stats.mjs                  описательные, корреляция, регрессия, ANOVA, кластер, ТС и др.
+      io.mjs                     export_csv, save_spreadsheet, import_data, screenshot, open, dialog
+      stats.mjs                  описательные, корреляция, регрессия, ANOVA, кластер, ТС, add_lag_column, add_fit_line, run_macro, normality
       engine.mjs                 run_analysis
   sta.ps1                        точка входа COM-воркера
   worker/
@@ -354,6 +369,9 @@ statistica/
       io.ps1                     export_csv, save_as, import (ExportTextEx/ExportXLS)
       analysis.ps1               describe_analysis, analysis
       macro.ps1                  run_macro (SVB, ActiveSpreadsheet)
+      open.ps1                   statistica_open (постоянное окно)
+      dialog.ps1                 statistica_dialog (снимок панелей анализа)
+  ARCHITECTURE.md                схема устройства (Mermaid)
   selftest.mjs                   самопроверка (53 проверки)
   scripts/
     check.mjs                    линтер: парсинг, импорты, стиль (--fix, --strict, --external)

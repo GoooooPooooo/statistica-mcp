@@ -85,6 +85,10 @@
 | Экспон. сглаживание | `NoTrend*`/`LinearTrend*`/`Damped*` + `ParameterAlpha/Gamma/Delta` | `exponential_smoothing` с `model` (ЛР4: EMA/Хольт/Тейл–Вейдж/Уинтерс). |
 | Полиномиальный fit | МНК в Node (нормальные уравнения, метод Гаусса) | `add_fit_line degree=1..6`. |
 | Нормальность | `ShapiroWilkWTest`, `KSAndLillieforsTestForNormality` | `statistica_normality` (1301); `Histograms` — метод, не флаг. |
+| Пошаговая матрица | чтение ряда + `addwrite` колонки | `add_lag_column` дописывает одну колонку `Lag_m` (product/shift + центрир. SMA). |
+| Снимок панели модуля | скрытое окно `#32770` + `ShowWindow`/`CopyFromScreen` | `statistica_dialog`; окно на передний план, режим `screen`/`dialog`; закрывается только диалог. |
+| Импорт в окно | `ImportTextAutoEx` (attach) | лист импорта эфемерный: нужно `save` и открыть файлом, иначе `Spreadsheets` его не видит. |
+| Сохранение в окне | `save_as` + `attach` | `save_spreadsheet` с `copy=false` сохраняет открытый лист на месте. |
 | Постоянное окно | `GetActiveObject`/`New-Object`, `Visible=$true`, без `Quit` | `statistica_open`: окно не закрывается; при нескольких экземплярах `GetActiveObject` отдаёт первый, поэтому `open` переиспользует запущенный. |
 | `attach` без `path` | пустой `path` → `ActiveSpreadsheet` | `requirePath` разрешает пустой путь в `attach`. |
 
