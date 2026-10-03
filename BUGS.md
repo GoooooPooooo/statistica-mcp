@@ -85,6 +85,8 @@
 | Экспон. сглаживание | `NoTrend*`/`LinearTrend*`/`Damped*` + `ParameterAlpha/Gamma/Delta` | `exponential_smoothing` с `model` (ЛР4: EMA/Хольт/Тейл–Вейдж/Уинтерс). |
 | Полиномиальный fit | МНК в Node (нормальные уравнения, метод Гаусса) | `add_fit_line degree=1..6`. |
 | Нормальность | `ShapiroWilkWTest`, `KSAndLillieforsTestForNormality` | `statistica_normality` (1301); `Histograms` — метод, не флаг. |
+| Постоянное окно | `GetActiveObject`/`New-Object`, `Visible=$true`, без `Quit` | `statistica_open`: окно не закрывается; при нескольких экземплярах `GetActiveObject` отдаёт первый, поэтому `open` переиспользует запущенный. |
+| `attach` без `path` | пустой `path` → `ActiveSpreadsheet` | `requirePath` разрешает пустой путь в `attach`. |
 
 ### Почему правка данных делается в одном вызове воркера
 
