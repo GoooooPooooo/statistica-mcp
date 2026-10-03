@@ -78,6 +78,19 @@ const tools = [
       additionalProperties: false,
     },
   },
+  {
+    name: 'statistica_open',
+    description:
+      'Launch a visible STATISTICA window (optionally opening a file) and leave it running. Subsequent calls with attach:true edit this same window — no repeated start/stop of the application.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Optional file to open in the window.' },
+        sheet: { type: ['string', 'integer'], description: 'Optional sheet to activate (name or 1-based index).' },
+      },
+      additionalProperties: false,
+    },
+  },
 ]
 
 const handlers = {
@@ -124,6 +137,14 @@ const handlers = {
     })
     const fg = r.foreground === false ? '; warning: STATISTICA could not be brought to the foreground' : ''
     return `Screenshot saved to ${r.out} (${r.bytes} bytes, ${r.mode ?? 'screen'} mode)${fg}`
+  },
+
+  async statistica_open(a) {
+    const r = await runWorker({ cmd: 'open', path: a.path, sheet: a.sheet })
+    const lines = [`STATISTICA started: pid ${r.pid}, version ${r.version}; the window is left open.`]
+    if (r.opened) lines.push(`Opened ${a.path} (sheet ${r.sheetName}, index ${r.sheetIndex})`)
+    lines.push('Use attach:true with other tools to edit/graph this window live.')
+    return lines.join('\n')
   },
 }
 

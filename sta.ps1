@@ -26,16 +26,19 @@ $CB = [Microsoft.VisualBasic.CallType]
 . (Join-Path $PSScriptRoot 'worker\commands\io.ps1')
 . (Join-Path $PSScriptRoot 'worker\commands\analysis.ps1')
 . (Join-Path $PSScriptRoot 'worker\commands\macro.ps1')
+. (Join-Path $PSScriptRoot 'worker\commands\open.ps1')
 . (Join-Path $PSScriptRoot 'worker\screenshot.ps1')
 
 # --- request handling -----------------------------------------------------
 $app = $null
 $result = $null
 $attached = $false
+$keepAlive = $false
 try {
   $req = [System.IO.File]::ReadAllText($RequestFile, [System.Text.Encoding]::UTF8) | ConvertFrom-Json
   $cmd = [string]$req.cmd
   if ($req.attach) { $attached = $true }
+  if ($cmd -eq 'open') { $keepAlive = $true }
 
   if ($cmd -eq 'info') {
     $result = @{ ok = $true; cmd = $cmd }
@@ -52,10 +55,19 @@ try {
     if (-not $attached) { Close-App $app; $app = $null }
   }
   else {
-    $app = New-ComApp $attached
-    if (-not $attached) {
-      $app.Visible = $false
-      Disable-Alerts $app
+    if ($keepAlive -and -not $attached) {
+      # Reuse the running instance when there is one, so that a later
+      # GetActiveObject-based attach always resolves to the same window.
+      try { $app = [System.Runtime.InteropServices.Marshal]::GetActiveObject('STATISTICA.Application') }
+      catch { $app = New-Object -ComObject 'STATISTICA.Application' }
+      $app.Visible = $true
+    }
+    else {
+      $app = New-ComApp $attached
+      if (-not $attached) {
+        $app.Visible = $false
+        Disable-Alerts $app
+      }
     }
     $ss = $null
     if ($req.path) { $ss = Open-Sheet $app ([string]$req.path) $req.sheet }
@@ -66,7 +78,7 @@ try {
       $script:sheetIndex = 1
       try { $script:sheetIndex = [int]$ss.Index } catch { $script:sheetIndex = 1 }
     }
-    elseif ($cmd -ne 'import') { throw "path is required for command '$cmd'" }
+    elseif ($cmd -notin @('import', 'open')) { throw "path is required for command '$cmd'" }
 
     $fn = "Invoke-$cmd"
     if (Get-Command -Name $fn -CommandType Function -ErrorAction SilentlyContinue) {
@@ -81,7 +93,7 @@ try {
       $result.saved = $sv
     }
 
-    if (-not $attached) { Close-App $app; $app = $null }
+    if (-not $attached -and -not $keepAlive) { Close-App $app; $app = $null }
   }
 
   $out = @{ ok = $true; result = $result }
@@ -93,7 +105,7 @@ catch {
   $out = @{ ok = $false; error = $msg; hresult = $hr }
 }
 finally {
-  if ($null -ne $app -and -not $attached) {
+  if ($null -ne $app -and -not $attached -and -not $keepAlive) {
     try { Close-AllDocuments $app } catch { }
     try { $app.Quit() } catch { }
   }
