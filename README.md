@@ -73,7 +73,7 @@ $app.Quit()
 node selftest.mjs "C:\путь\к\LAB3.sta"
 ```
 
-Скрипт создаёт временную копию файла, прогоняет **29 проверок** (все инструменты, включая анализы, формулы, и импорт) и печатает результат. Исходный файл не изменяется.
+Скрипт создаёт временную копию файла, прогоняет **37 проверок** (все инструменты, включая анализы, формулы, правку данных, ANOVA, факторный и импорт) и печатает результат. Исходный файл не изменяется.
 
 ---
 
@@ -105,6 +105,10 @@ node selftest.mjs "C:\путь\к\LAB3.sta"
 | `rename_variables` | Переименование коротких/длинных имён (по имени или индексу). |
 | `delete_variables` | Удаление диапазона переменных. |
 | `set_size` | Изменение размера таблицы. |
+| `case_names` | Чтение и запись имён наблюдений (текстовых меток строк). |
+| `sort_data` | Сортировка по одному или нескольким ключам (имена наблюдений переезжают вместе со строками). |
+| `select_cases` | Оставить только строки, удовлетворяющие условию (`gt/ge/lt/le/eq/ne/in/notin/missing/notmissing`). |
+| `recode` | Перекодирование значений переменной по таблице `map` (+ `default`, `missing`). |
 | `set_formula` | Запись формулы в переменную (`=v9*v10`) и пересчёт (`Recalculate`). |
 | `import_data` | Импорт текста/Excel в STATISTICA. |
 | `export_csv` | Экспорт листа штатным CSV-писателем. |
@@ -130,6 +134,9 @@ write_variables { "path": "...\\LAB3.sta", "columns": [{"index": 5, "values": [ 
 | `statistica_frequencies` | Частотные таблицы и гистограммы. |
 | `statistica_t_test` | t-тесты: `single` (к константе) и `dependent` (парные). |
 | `statistica_regression` | Множественная регрессия (модуль GRM). |
+| `statistica_anova` | Дисперсионный анализ / GLM (модуль 4100): таблица ANOVA (`UnivariateResults`) и оценки параметров. |
+| `statistica_factor` | Факторный анализ / метод главных компонент (модуль 2101): собственные значения, нагрузки, общности. |
+| `statistica_correlation_matrix` | Строит лаговые произведения ряда (`Lag1..LagK` = `x(t)*x(t-L)`, опц. SMA) или сдвинутые ряды (`mode:"shift"`). |
 | `statistica_time_series` | Временные ряды: `descriptives`, `autocorrelation`, `partial_autocorrelation`, `cross_correlation`, `arima`, `spectral`, `smoothing`, `exponential_smoothing`, `differencing`, `seasonal_decomposition`. |
 | `statistica_graph` | График и его экспорт в изображение (2D scatter, 2D line, 3D surface и др.). |
 
@@ -204,6 +211,23 @@ statistica_time_series { "path": "...", "procedure": "spectral",  "variables": [
 
 ```
 set_formula { "path": "...\\LAB3.sta", "variable": 19, "formula": "v9*v10" }
+statistica_correlation_matrix { "path": "...\\LAB3.sta", "variable": "TS_Nrm", "lags": 12, "smooth": 3 }
+```
+
+**ANOVA и факторный анализ**
+
+```
+statistica_anova  { "path": "...\\LAB3.sta", "dependent": 2, "between": [1, 3] }
+statistica_factor { "path": "...\\LAB3.sta", "variables": [2, 3, 4], "method": "principal_components", "factors": 2 }
+```
+
+**Правка данных**
+
+```
+case_names  { "path": "...\\LAB2.sta", "names": ["янв", "фев", "мар"] }
+sort_data   { "path": "...\\LAB2.sta", "variables": [1, 2], "order": [0, 1] }
+select_cases{ "path": "...\\LAB2.sta", "variable": 2, "op": "notmissing", "save": "...\\clean.sta" }
+recode      { "path": "...\\LAB2.sta", "variable": 1, "map": { "1": 10, "2": 20 }, "default": 0 }
 ```
 
 **График в файл (2D-диаграмма рассеяния)**
@@ -274,7 +298,7 @@ run_analysis {
 statistica/
   server.mjs                     MCP-сервер, протокол, инструменты
   sta.ps1                        COM-воркер (файловый обмен)
-  selftest.mjs                   самопроверка (29 проверок)
+  selftest.mjs                   самопроверка (37 проверок)
   package.json                   зависимостей нет
   reports/
     development-report.md        отчёт: проблемы, гипотезы, решения, итог
