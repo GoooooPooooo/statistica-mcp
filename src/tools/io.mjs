@@ -52,6 +52,32 @@ const tools = [
       additionalProperties: false,
     },
   },
+  {
+    name: 'statistica_screenshot',
+    description:
+      'Launch STATISTICA visibly, optionally build a graph/analysis result, then capture the main window to a PNG/JPG image for a report. Content is prepared while hidden, then the window is shown and captured.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'File to open. Omit only in attach mode.' },
+        sheet: { type: ['string', 'integer'] },
+        out: { type: 'string', description: 'Image path (.png or .jpg). Required.' },
+        module: { type: ['string', 'integer'], description: 'Optional analysis/graph module to build before capturing.' },
+        variables: { type: 'string', description: 'Variable list for the module, e.g. "2 | 11".' },
+        properties: { type: 'object', additionalProperties: true, description: 'Extra dialog properties for the module.' },
+        result: { type: 'string', description: 'Result property to read/build (default "Graphs").' },
+        run: { type: 'boolean', description: 'Call Run on the module before reading the result.' },
+        mode: {
+          type: 'string',
+          enum: ['screen', 'window', 'document'],
+          description: 'screen = whole display (default, nothing clipped), window = STATISTICA frame, document = active data/graph window only.',
+        },
+        waitMs: { type: 'integer', minimum: 0, description: 'Delay after showing the window before capture. Default 1500 ms.' },
+      },
+      required: ['out'],
+      additionalProperties: false,
+    },
+  },
 ]
 
 const handlers = {
@@ -79,6 +105,24 @@ const handlers = {
     const lines = [`Imported ${a.source}`, `Result: ${r.cases} cases x ${r.variables} variables ("${r.name}")`]
     if (r.saved) lines.push(`Saved to ${r.saved} (${r.bytes} bytes)`)
     return lines.join('\n')
+  },
+
+  async statistica_screenshot(a) {
+    const r = await runWorker({
+      cmd: 'screenshot',
+      path: a.path,
+      sheet: a.sheet,
+      out: a.out,
+      module: a.module,
+      variables: a.variables,
+      properties: a.properties,
+      result: a.result,
+      run: a.run,
+      mode: a.mode,
+      waitMs: a.waitMs,
+      attach: a.attach,
+    })
+    return `Screenshot saved to ${r.out} (${r.bytes} bytes, ${r.mode ?? 'screen'} mode)`
   },
 }
 

@@ -41,6 +41,23 @@ function Set-LongName($ss, $idx, $value) {
   }
 }
 
+# Obtain the STATISTICA automation object, retrying a few times: a lingering
+# instance can make creation fail intermittently with E_FAIL.
+function New-ComApp($attached) {
+  $last = $null
+  for ($i = 0; $i -lt 3; $i++) {
+    try {
+      if ($attached) { return [System.Runtime.InteropServices.Marshal]::GetActiveObject('STATISTICA.Application') }
+      return New-Object -ComObject 'STATISTICA.Application'
+    }
+    catch {
+      $last = $_
+      Start-Sleep -Milliseconds 700
+    }
+  }
+  throw $last
+}
+
 # Suppress modal dialogs/alerts so headless COM automation never blocks on a prompt.
 function Disable-Alerts($app) {
   try { $app.DisplayAlert = $false } catch { }
@@ -59,6 +76,12 @@ function Close-AllDocuments($app) {
       }
     } catch { }
   }
+}
+
+# Discard documents and quit, never letting a cleanup failure fail the command.
+function Close-App($app) {
+  try { Close-AllDocuments $app } catch { }
+  try { $app.Quit() } catch { }
 }
 
 function Wait-File($path) {

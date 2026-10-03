@@ -26,7 +26,8 @@ const SAVED = join(process.env.TEMP, 'sta-selftest-saved.sta')
 const IMPORT_CSV = join(process.env.TEMP, 'sta-selftest-import.csv')
 const GRAPH_PNG = join(process.env.TEMP, 'sta-selftest-graph.png')
 const GRAPH_PDF = join(process.env.TEMP, 'sta-selftest-graph.pdf')
-for (const f of [WORK, WORK2, CSV, CSV2, XLSX, SAVED, IMPORT_CSV, GRAPH_PNG, GRAPH_PDF]) rmSync(f, { force: true })
+const SHOT = join(process.env.TEMP, 'sta-selftest-shot.png')
+for (const f of [WORK, WORK2, CSV, CSV2, XLSX, SAVED, IMPORT_CSV, GRAPH_PNG, GRAPH_PDF, SHOT]) rmSync(f, { force: true })
 copyFileSync(SRC, WORK)
 copyFileSync(SRC, WORK2)
 writeFileSync(IMPORT_CSV, 'x;y;label\n1;2.5;a\n2;3.1;b\n3;4.7;c\n', 'utf8')
@@ -162,6 +163,8 @@ await check('graph build + export png', 'statistica_graph', { path: WORK, module
 console.log(`      png on disk: ${existsSync(GRAPH_PNG)} (${existsSync(GRAPH_PNG) ? readFileSync(GRAPH_PNG).length : 0} bytes)`)
 await check('graph export pdf', 'statistica_graph', { path: WORK, module: 11003, variables: '2 | 11', out: GRAPH_PDF }, { mustInclude: '.pdf' })
 console.log(`      pdf on disk: ${existsSync(GRAPH_PDF)} (${existsSync(GRAPH_PDF) ? readFileSync(GRAPH_PDF).length : 0} bytes)`)
+await check('window screenshot', 'statistica_screenshot', { path: WORK, module: 11003, variables: '2 | 11', out: SHOT }, { mustInclude: 'Screenshot saved' })
+console.log(`      png on disk: ${existsSync(SHOT)} (${existsSync(SHOT) ? readFileSync(SHOT).length : 0} bytes)`)
 await check('time series: smoothing', 'statistica_time_series', { path: WORK, procedure: 'smoothing', variables: [2], window: 3 }, { mustInclude: 'SaveVariables' })
 await check('t-test (dependent)', 'statistica_t_test', { path: WORK, kind: 'dependent', variables: [2, 3] }, { mustInclude: 'Confidence' })
 
@@ -209,5 +212,5 @@ if (failures.length) {
 }
 
 p.stdin.end()
-for (const f of [WORK, WORK2, CSV, CSV2, XLSX, SAVED, IMPORT_CSV, GRAPH_PNG, GRAPH_PDF]) rmSync(f, { force: true })
+for (const f of [WORK, WORK2, CSV, CSV2, XLSX, SAVED, IMPORT_CSV, GRAPH_PNG, GRAPH_PDF, SHOT]) rmSync(f, { force: true })
 process.exit(fail > 0 ? 1 : 0)

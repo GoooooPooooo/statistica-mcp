@@ -1,4 +1,4 @@
-﻿param(
+param(
   [Parameter(Mandatory=$true)][string]$RequestFile,
   [Parameter(Mandatory=$true)][string]$ResponseFile
 )
@@ -17,6 +17,7 @@ $CB = [Microsoft.VisualBasic.CallType]
 . (Join-Path $PSScriptRoot 'worker\commands\structure.ps1')
 . (Join-Path $PSScriptRoot 'worker\commands\io.ps1')
 . (Join-Path $PSScriptRoot 'worker\commands\analysis.ps1')
+. (Join-Path $PSScriptRoot 'worker\screenshot.ps1')
 
 # --- request handling -----------------------------------------------------
 $app = $null
@@ -29,11 +30,8 @@ try {
 
   if ($cmd -eq 'info') {
     $result = @{ ok = $true; cmd = $cmd }
-    if ($attached) {
-      $app = [System.Runtime.InteropServices.Marshal]::GetActiveObject('STATISTICA.Application')
-    }
-    else {
-      $app = New-Object -ComObject 'STATISTICA.Application'
+    $app = New-ComApp $attached
+    if (-not $attached) {
       $app.Visible = $false
       Disable-Alerts $app
     }
@@ -42,14 +40,11 @@ try {
     $result.versionEx = [string]$app.VersionEx
     $result.exe = [string]$app.Path
     $result.pid = $app.ProcessID
-    if (-not $attached) { Close-AllDocuments $app; $app.Quit(); $app = $null }
+    if (-not $attached) { Close-App $app; $app = $null }
   }
   else {
-    if ($attached) {
-      $app = [System.Runtime.InteropServices.Marshal]::GetActiveObject('STATISTICA.Application')
-    }
-    else {
-      $app = New-Object -ComObject 'STATISTICA.Application'
+    $app = New-ComApp $attached
+    if (-not $attached) {
       $app.Visible = $false
       Disable-Alerts $app
     }
@@ -77,7 +72,7 @@ try {
       $result.saved = $sv
     }
 
-    if (-not $attached) { Close-AllDocuments $app; $app.Quit(); $app = $null }
+    if (-not $attached) { Close-App $app; $app = $null }
   }
 
   $out = @{ ok = $true; result = $result }
