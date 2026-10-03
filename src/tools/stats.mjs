@@ -4,6 +4,29 @@ import { requirePath } from '../util.mjs'
 import { fmt, numify, varSpec } from '../format.mjs'
 import { TS_PROCEDURES } from '../modules.mjs'
 
+// Solve A·x = b by Gaussian elimination; returns null for a singular system.
+function solveLinear(A, b) {
+  const n = b.length
+  const M = A.map((row, i) => [...row, b[i]])
+  for (let col = 0; col < n; col++) {
+    let piv = col
+    for (let r = col + 1; r < n; r++) if (Math.abs(M[r][col]) > Math.abs(M[piv][col])) piv = r
+    if (Math.abs(M[piv][col]) < 1e-12) return null
+    const tmp = M[col]
+    M[col] = M[piv]
+    M[piv] = tmp
+    const d = M[col][col]
+    for (let c = col; c <= n; c++) M[col][c] /= d
+    for (let r = 0; r < n; r++) {
+      if (r === col) continue
+      const f = M[r][col]
+      if (f === 0) continue
+      for (let c = col; c <= n; c++) M[r][c] -= f * M[col][c]
+    }
+  }
+  return M.map((row) => row[n])
+}
+
 const tools = [
   {
     name: 'descriptives',
@@ -153,6 +176,14 @@ const tools = [
         prior: { type: 'boolean', description: 'smoothing: average prior values only (non-centered). Default false = centered moving average.' },
         lag: { type: 'integer', minimum: 1, description: 'shift: number of periods to shift. Default 1.' },
         direction: { type: 'string', enum: ['forward', 'back'], description: 'shift: shift forward (delay) or back (lead). Default forward.' },
+        model: {
+          type: 'string',
+          enum: ['simple', 'additive', 'multiplicative', 'holt', 'holt_additive', 'holt_multiplicative', 'exponential_trend', 'damped'],
+          description: 'exponential_smoothing: model type. Default simple (EMA). holt=linear trend, holt_additive=Theil-Wage, holt_multiplicative=Winters.',
+        },
+        alpha: { type: 'number', minimum: 0, maximum: 1, description: 'exponential_smoothing: level smoothing parameter.' },
+        gamma: { type: 'number', minimum: 0, maximum: 1, description: 'exponential_smoothing: trend/seasonal smoothing parameter.' },
+        delta: { type: 'number', minimum: 0, maximum: 1, description: 'exponential_smoothing: trend smoothing parameter for damped models.' },
         arOrder: { type: 'integer', minimum: 0, description: 'arima: autoregressive order p. Default 1.' },
         maOrder: { type: 'integer', minimum: 0, description: 'arima: moving-average order q. Default 0.' },
         difference: { type: 'boolean', description: 'arima: difference the series. Default false.' },
@@ -259,6 +290,7 @@ const tools = [
         sheet: { type: ['string', 'integer'] },
         y: { type: ['string', 'integer'], description: 'Dependent variable.' },
         x: { type: ['string', 'integer'], description: 'Predictor variable. Omit to use the case number 1..N.' },
+        degree: { type: 'integer', minimum: 1, maximum: 6, description: 'Polynomial degree. Default 1 (linear).' },
         name: { type: 'string', description: 'Name of the new fitted variable. Default "<y>_fit".' },
         save: { type: 'string', description: 'Optional destination path to persist the result as .sta.' },
       },
@@ -279,6 +311,22 @@ const tools = [
         source: { type: 'string', description: 'Path to a .svb file (alternative to code).' },
         save: { type: 'string', description: 'Optional destination .sta path to persist the modified sheet.' },
       },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'statistica_normality',
+    description:
+      'Normality diagnostics via the Basic Statistics module: descriptive summary plus Shapiro-Wilk W and Kolmogorov-Smirnov/Lilliefors tests and a histogram.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string' },
+        sheet: { type: ['string', 'integer'] },
+        variables: { type: 'array', items: { type: ['string', 'integer'] } },
+        intervals: { type: 'integer', minimum: 2, description: 'Number of histogram intervals. Default 9.' },
+      },
+      required: ['path', 'variables'],
       additionalProperties: false,
     },
   },
@@ -514,15 +562,35 @@ const handlers = {
           { result: 'SaveVariables' },
         ]
         break
-      case 'exponential_smoothing':
+      case 'exponential_smoothing': {
+        const modelMap = {
+          simple: 'NoTrendNoSeasonalCompononent',
+          additive: 'NoTrendAdditiveSeasonality',
+          multiplicative: 'NoTrendMultiplicativeSeasonality',
+          holt: 'LinearTrendNoSeasonalCompononent',
+          holt_additive: 'LinearTrendAdditiveSeasonality',
+          holt_multiplicative: 'LinearTrendMultiplicativeSeasonality',
+          exponential_trend: 'ExponentialTrendNoSeasonalCompononent',
+          damped: 'DampedTrendNoSeasonalCompononent',
+        }
+        const modelProp = modelMap[a.model ?? 'simple']
+        if (!modelProp) throw new Error(`unknown exponential smoothing model: ${a.model}`)
+        const opts = { [modelProp]: true }
+        if (a.alpha !== undefined) opts.ParameterAlpha = a.alpha
+        if (a.gamma !== undefined) opts.ParameterGamma = a.gamma
+        if (a.delta !== undefined) opts.ParameterDelta = a.delta
+        if (a.seasonalLag !== undefined) opts.SeasonalLag = a.seasonalLag
         steps = [
           { set: { Variables: vs, FocusTimeSeriesVariable: focus } },
           { call: 'ExponentialSmoothingAndForecasting' },
-          { set: { NoTrendNoSeasonalCompononent: true, ForecastNCases: a.forecasts ?? 12 } },
+          { set: opts },
           { run: true },
+          { set: { ForecastNCases: a.forecasts ?? 12 } },
           { result: 'Summary' },
+          { result: 'SaveVariables' },
         ]
         break
+      }
       case 'seasonal_decomposition':
         steps = [
           { set: { Variables: vs, FocusTimeSeriesVariable: focus } },
@@ -688,31 +756,45 @@ const handlers = {
       xs.push(x)
       ys.push(y)
     }
-    if (xs.length < 2) throw new Error(`not enough paired values for a fit (${xs.length})`)
-    const mx = xs.reduce((s, v) => s + v, 0) / xs.length
-    const my = ys.reduce((s, v) => s + v, 0) / ys.length
-    let sxx = 0
-    let sxy = 0
-    let syy = 0
+    const deg = Math.max(1, Math.min(6, a.degree ?? 1))
+    const size = deg + 1
+    if (xs.length < size) throw new Error(`not enough paired values for a degree-${deg} fit (${xs.length})`)
+    const A = Array.from({ length: size }, () => new Array(size).fill(0))
+    const b = new Array(size).fill(0)
+    const pow = new Array(size)
     for (let i = 0; i < xs.length; i++) {
-      const dx = xs[i] - mx
-      const dy = ys[i] - my
-      sxx += dx * dx
-      sxy += dx * dy
-      syy += dy * dy
+      let p = 1
+      for (let k = 0; k < size; k++) {
+        pow[k] = p
+        p *= xs[i]
+      }
+      for (let row = 0; row < size; row++) {
+        b[row] += pow[row] * ys[i]
+        for (let col = 0; col < size; col++) A[row][col] += pow[row] * pow[col]
+      }
     }
-    const slope = sxx === 0 ? 0 : sxy / sxx
-    const intercept = my - slope * mx
-    const r2 = syy === 0 ? 1 : (sxy * sxy) / (sxx * syy)
+    const beta = solveLinear(A, b)
+    if (!beta) throw new Error('singular system (x values may be constant)')
+    const evalPoly = (x) => beta.reduce((s, c, k) => s + c * Math.pow(x, k), 0)
+    const my = ys.reduce((s, v) => s + v, 0) / ys.length
+    let sse = 0
+    let sst = 0
+    for (let i = 0; i < xs.length; i++) {
+      const resid = ys[i] - evalPoly(xs[i])
+      sse += resid * resid
+      sst += (ys[i] - my) * (ys[i] - my)
+    }
+    const r2 = sst === 0 ? 1 : 1 - sse / sst
     const name = a.name ?? `${yd.cleanName || yd.name}_fit`
     const fitted = []
     for (let i = 0; i < n; i++) {
       const x = xd ? num(xd.values[i]) : i + 1
-      fitted.push(x === null ? null : intercept + slope * x)
+      fitted.push(x === null ? null : evalPoly(x))
     }
     const r = await runWorker({ cmd: 'addwrite', path: requirePath(a), sheet: a.sheet, columns: [{ name, type: 0, values: fitted }], save: a.save, attach: a.attach })
     const xlabel = xd ? xd.cleanName || xd.name : 'case number'
-    const lines = [`Fit ${yd.cleanName || yd.name} on ${xlabel}: y = ${fmt(intercept)} + ${fmt(slope)}·x`]
+    const terms = beta.map((c, k) => `${fmt(c)}·${k === 0 ? '1' : k === 1 ? 'x' : `x^${k}`}`).join(' + ')
+    const lines = [`Fit (degree ${deg}) ${yd.cleanName || yd.name} on ${xlabel}: ${terms}`]
     lines.push(`R² = ${fmt(r2)}; added ${r.added[0].name} (#${r.added[0].index})`)
     if (r.saved) lines.push(`Saved to ${r.saved}`)
     return lines.join('\n')
@@ -724,6 +806,28 @@ const handlers = {
     const lines = [`Ran macro "${r.macro}"`]
     if (r.saved) lines.push(`Saved to ${r.saved}`)
     return lines.join('\n')
+  },
+
+  async statistica_normality(a) {
+    const vs = varSpec(a.variables)
+    if (!vs) throw new Error('`variables` is required')
+    const opts = {
+      Variables: vs,
+      ValidN: true,
+      Mean: true,
+      StandardDeviation: true,
+      Skewness: true,
+      Kurtosis: true,
+      StandardErrorOfSkewness: true,
+      StandardErrorOfKurtosis: true,
+      MinimumMaximum: true,
+      ShapiroWilkWTest: true,
+      KSAndLillieforsTestForNormality: true,
+      UseNumberOfIntervals: true,
+      NumberOfIntervals: a.intervals ?? 9,
+    }
+    const steps = [{ set: { Statistics: 0 } }, { run: true }, { set: opts }, { result: 'Summary' }, { result: 'Histograms' }]
+    return analysis(a, 1301, steps)
   },
 }
 
