@@ -15,7 +15,10 @@ namespace StaShot {
     public delegate bool EnumProc(IntPtr hWnd, IntPtr lParam);
     [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
     [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
+    [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
     [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+    [DllImport("user32.dll")] public static extern bool BringWindowToTop(IntPtr hWnd);
+    [DllImport("user32.dll")] public static extern void SwitchToThisWindow(IntPtr hWnd, bool fAltTab);
     [DllImport("user32.dll")] public static extern IntPtr FindWindowEx(IntPtr parent, IntPtr childAfter, string cls, string title);
     [DllImport("user32.dll")] public static extern bool EnumChildWindows(IntPtr hWnd, EnumProc cb, IntPtr lParam);
     [DllImport("user32.dll")] public static extern int GetClassName(IntPtr hWnd, StringBuilder s, int n);
@@ -53,13 +56,27 @@ function Save-ScreenShot($app, $out, $mode) {
   }
   if (-not $proc -or $proc.MainWindowHandle -eq 0) { throw 'STATISTICA main window not found' }
   $main = $proc.MainWindowHandle
+  # Restore if minimized, then maximize and force it to the foreground
+  # (SetForegroundWindow alone is often ignored by the foreground lock).
+  $null = [StaShot.Win32]::ShowWindow($main, 9)
+  Start-Sleep -Milliseconds 200
   $null = [StaShot.Win32]::ShowWindow($main, 3)
+  try { [Microsoft.VisualBasic.Interaction]::AppActivate($procId) } catch { }
+  [StaShot.Win32]::SwitchToThisWindow($main, $true)
+  $null = [StaShot.Win32]::BringWindowToTop($main)
   $null = [StaShot.Win32]::SetForegroundWindow($main)
+  $foreground = $false
+  for ($i = 0; $i -lt 25; $i++) {
+    if ([StaShot.Win32]::GetForegroundWindow() -eq $main) { $foreground = $true; break }
+    Start-Sleep -Milliseconds 150
+    $null = [StaShot.Win32]::SetForegroundWindow($main)
+  }
   Start-Sleep -Milliseconds 900
 
   if ($mode -eq 'screen') {
-    # Whole primary screen: nothing is clipped by window/DPI geometry.
-    $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+    # Whole virtual desktop (all monitors): nothing is clipped and the app is
+    # captured wherever it was maximized.
+    $b = [System.Windows.Forms.SystemInformation]::VirtualScreen
     $x = $b.X
     $y = $b.Y
     $w = $b.Width
@@ -89,7 +106,7 @@ function Save-ScreenShot($app, $out, $mode) {
   if ($ext -eq '.jpg' -or $ext -eq '.jpeg') { $bmp.Save($out, [System.Drawing.Imaging.ImageFormat]::Jpeg) }
   else { $bmp.Save($out, [System.Drawing.Imaging.ImageFormat]::Png) }
   $bmp.Dispose()
-  return (Wait-File $out)
+  return @{ bytes = (Wait-File $out); foreground = $foreground }
 }
 
 function Invoke-screenshot($app, $ss, $req) {
@@ -125,6 +142,6 @@ function Invoke-screenshot($app, $ss, $req) {
   if ($null -ne $req.waitMs) { $wait = [int]$req.waitMs }
   try { $app.Visible = $true } catch { throw "screenshot: could not show window: $($_.Exception.Message)" }
   Start-Sleep -Milliseconds $wait
-  try { $bytes = Save-ScreenShot $app $out $mode } catch { throw "screenshot: capture failed: $($_.Exception.Message)" }
-  return @{ out = $out; bytes = $bytes; mode = $mode }
+  try { $shot = Save-ScreenShot $app $out $mode } catch { throw "screenshot: capture failed: $($_.Exception.Message)" }
+  return @{ out = $out; bytes = $shot.bytes; mode = $mode; foreground = $shot.foreground }
 }

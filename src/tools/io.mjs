@@ -122,7 +122,8 @@ const handlers = {
       waitMs: a.waitMs,
       attach: a.attach,
     })
-    return `Screenshot saved to ${r.out} (${r.bytes} bytes, ${r.mode ?? 'screen'} mode)`
+    const fg = r.foreground === false ? '; warning: STATISTICA could not be brought to the foreground' : ''
+    return `Screenshot saved to ${r.out} (${r.bytes} bytes, ${r.mode ?? 'screen'} mode)${fg}`
   },
 }
 

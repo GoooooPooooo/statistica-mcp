@@ -75,6 +75,7 @@
 | Скриншот окна | `CopyFromScreen` + `Activate()` документа | `PrintWindow` не рисует дочерние MDI-окна; `mode=document` снимает таблицу/график. |
 | Повтор COM | `New-ComApp` (3 попытки) | Зависший экземпляр даёт разовый `E_FAIL`; создание повторяется. |
 | DPI-awareness | `SetProcessDPIAware` в начале воркера | Без него `Screen.Bounds`/`CopyFromScreen` давали 2560×1359 вместо 5120×2718 — кадр обрезался. |
+| Активация окна | `ShowWindow` (restore+maximize), `AppActivate`, `SwitchToThisWindow` | `SetForegroundWindow` игнорируется для свёрнутого окна; снимок — весь `VirtualScreen`, ответ предупреждает, если фокус не получен. |
 
 ### Почему правка данных делается в одном вызове воркера
 
