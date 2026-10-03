@@ -617,9 +617,23 @@ MCP из «читалки/писалки файлов» превращён в п
 
 **Итог.** Проверено: макрос `s.Cells(1,1)=999` меняет данные (`v1[0]` 1 → 999). Относится к ЛР6–8, не к ЛР3.
 
+## 25g. Модели экспоненциального сглаживания (ЛР4) и блоки ЛР1–ЛР2
+
+**Проблема.** Для ЛР4 нужны модели Хольта, Тейла–Вейджа и Уинтерса с параметрами сглаживания; для ЛР1/ЛР2 — взвешенная полиномиальная аппроксимация и проверка нормальности.
+
+**Гипотезы:**
+
+- **H1. `exponential_smoothing` умеет только простой EMA.** — *Отвергнута.* Панель ES даёт свойства-модели `NoTrendNoSeasonalCompononent` (EMA), `NoTrendAdditive/Multiplicative`, `LinearTrendNoSeasonalCompononent` (Хольт), `LinearTrendAdditiveSeasonality` (Тейл–Вейдж), `LinearTrendMultiplicativeSeasonality` (Уинтерс), `DampedTrend*`, `ExponentialTrend*`, а также `ParameterAlpha/Gamma/Delta`, `SeasonalLag`, `ForecastNCases`. Добавлен параметр `model`.
+- **H2. Аппроксимация только линейная.** — *Отвергнута.* `add_fit_line` обобщён до степени `degree` (МНК через нормальные уравнения).
+- **H3. Нормальность — отдельный модуль.** — *Отвергнута.* Это вкладка Normality в Basic Statistics: `ShapiroWilkWTest`, `KSAndLillieforsTestForNormality`, `Histograms` (последнее — метод; чтение результата `Histograms` даёт гистограмму).
+
+**Решение.** `exponential_smoothing` получил `model` и параметры; `add_fit_line` — степень; добавлен `statistica_normality` (описательные + тесты + гистограмма).
+
+**Итог.** ЛР4 (EMA/Хольт/Тейл–Вейдж/Уинтерс) и шаги нормальности ЛР2 выполнимы.
+
 ## 26. Проверка части III
 
-Самопроверка расширена до **50 проверок** (добавлены PDF, скриншот окна, кластерный анализ, `list_sheets`, уровни измерения, метки значений, `shift`, `add_fit_line`, `run_macro`, 3D-surface, multi-line, `.xlsx`, CSV с разделителем). Все проходят на `LAB2.sta`; модальные окна не появляются.
+Самопроверка расширена до **53 проверок** (добавлены PDF, скриншот окна, кластерный анализ, `list_sheets`, уровни измерения, метки значений, `shift`, `add_fit_line` (лин. и полином), `run_macro`, экс-сглаживание Хольта, нормальность, 3D-surface, multi-line, `.xlsx`, CSV с разделителем). Все проходят на `LAB2.sta`; модальные окна не появляются.
 
 | № | Пункт | Принятая гипотеза | Метод | Итог |
 |---|---|---|---|---|
@@ -636,3 +650,6 @@ MCP из «читалки/писалки файлов» превращён в п
 | 25d | Multi-line (ЛР3) | 11012 `GraphType=1` | `properties` | Реализовано |
 | 25e | 3D Surface (ЛР3) | 11021 `GraphType=6` | `properties` | Реализовано |
 | 25f | Макросы SVB (ЛР6–8) | `Macro.Execute()` + `Activate()` | `run_macro` | Реализовано |
+| 25g | Модели ES (ЛР4) | `LinearTrend*`/`ParameterAlpha` | `exponential_smoothing model` | Реализовано |
+| 25h | Полином. fit (ЛР1–2) | МНК через нормальные уравнения | `add_fit_line degree` | Реализовано |
+| 25i | Нормальность (ЛР2) | `ShapiroWilkWTest`, K-S | `statistica_normality` | Реализовано |

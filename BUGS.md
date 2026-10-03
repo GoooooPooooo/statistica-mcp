@@ -82,6 +82,9 @@
 | Совмещённый и 3D-график | `properties.GraphType` | 11012 `GraphType=1` — один график с несколькими линиями; 11021 `GraphType=6` — Surface. |
 | TS-мультиграфик | `PlotMultipleVariables` | *Отвергнуто:* сеттер роняет STATISTICA (RPC unavailable); обход — 11012 `GraphType=1`. |
 | SVB-макрос | `Application.Open(.svb)` + `Macro.Execute()` | `run_macro`; перед запуском `$ss.Activate()` (иначе `ActiveSpreadsheet` = Nothing); макросы закрываются в `Close-AllDocuments`. |
+| Экспон. сглаживание | `NoTrend*`/`LinearTrend*`/`Damped*` + `ParameterAlpha/Gamma/Delta` | `exponential_smoothing` с `model` (ЛР4: EMA/Хольт/Тейл–Вейдж/Уинтерс). |
+| Полиномиальный fit | МНК в Node (нормальные уравнения, метод Гаусса) | `add_fit_line degree=1..6`. |
+| Нормальность | `ShapiroWilkWTest`, `KSAndLillieforsTestForNormality` | `statistica_normality` (1301); `Histograms` — метод, не флаг. |
 
 ### Почему правка данных делается в одном вызове воркера
 
