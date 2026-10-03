@@ -150,6 +150,9 @@ const tools = [
         focus: { type: 'integer', minimum: 1, description: '1-based position within `variables` of the series to analyse. Default 1.' },
         lags: { type: 'integer', minimum: 1, description: 'autocorrelation: number of lags. Default 20.' },
         window: { type: 'integer', minimum: 2, description: 'smoothing: moving-average window size. Default 3.' },
+        prior: { type: 'boolean', description: 'smoothing: average prior values only (non-centered). Default false = centered moving average.' },
+        lag: { type: 'integer', minimum: 1, description: 'shift: number of periods to shift. Default 1.' },
+        direction: { type: 'string', enum: ['forward', 'back'], description: 'shift: shift forward (delay) or back (lead). Default forward.' },
         arOrder: { type: 'integer', minimum: 0, description: 'arima: autoregressive order p. Default 1.' },
         maOrder: { type: 'integer', minimum: 0, description: 'arima: moving-average order q. Default 0.' },
         difference: { type: 'boolean', description: 'arima: difference the series. Default false.' },
@@ -242,6 +245,24 @@ const tools = [
         prefix: { type: 'string', description: 'Name prefix for the new variables. Default "Lag".' },
       },
       required: ['path', 'variable'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'add_fit_line',
+    description:
+      'Fit an ordinary least-squares line of `y` on `x` (x defaults to the case number) and write the fitted values to a new variable, so the trend can be plotted next to the data (a scriptable substitute for the interactive graph fit).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string' },
+        sheet: { type: ['string', 'integer'] },
+        y: { type: ['string', 'integer'], description: 'Dependent variable.' },
+        x: { type: ['string', 'integer'], description: 'Predictor variable. Omit to use the case number 1..N.' },
+        name: { type: 'string', description: 'Name of the new fitted variable. Default "<y>_fit".' },
+        save: { type: 'string', description: 'Optional destination path to persist the result as .sta.' },
+      },
+      required: ['path', 'y'],
       additionalProperties: false,
     },
   },
@@ -427,6 +448,7 @@ const handlers = {
             set: {
               TypeOfTransformation: 1,
               NPointsMovingAverage: true,
+              ComputeMovingAverageFromPriorValues: a.prior === true,
               NPointsWindowForMovingAverage: a.window ?? 3,
             },
           },
@@ -435,6 +457,24 @@ const handlers = {
           { result: 'DescriptiveStatistics' },
         ]
         break
+      case 'shift': {
+        const setShift = { TypeOfTransformation: 3 }
+        if (a.direction === 'back') {
+          setShift.ShiftSeriesBack = true
+          setShift.LagForShftingSeriesBackward = a.lag ?? 1
+        } else {
+          setShift.ShiftSeriesForward = true
+          setShift.LagForShiftingSeriesForward = a.lag ?? 1
+        }
+        steps = [
+          { set: { Variables: vs, FocusTimeSeriesVariable: focus } },
+          { run: true },
+          { set: setShift },
+          { run: true },
+          { result: 'SaveVariables' },
+        ]
+        break
+      }
       case 'spectral':
         steps = [
           { set: { Variables: vs, FocusTimeSeriesVariable: focus } },
@@ -611,6 +651,53 @@ const handlers = {
       return `  ${c.name}: ${vals.map((v) => fmt(v)).join(', ')}`
     })
     if (preview.length) lines.push('preview:', ...preview)
+    if (r.saved) lines.push(`Saved to ${r.saved}`)
+    return lines.join('\n')
+  },
+
+  async add_fit_line(a) {
+    const vars = a.x !== undefined && a.x !== null ? [a.y, a.x] : [a.y]
+    const read = await runWorker({ cmd: 'read', path: requirePath(a), sheet: a.sheet, variables: vars, attach: a.attach })
+    const yd = read.data?.[0]
+    if (!yd) throw new Error(`could not read variable ${a.y}`)
+    const xd = vars.length > 1 ? read.data[1] : null
+    const n = yd.values.length
+    const num = (v) => (v === null || v === undefined ? null : Number(v))
+    const xs = []
+    const ys = []
+    for (let i = 0; i < n; i++) {
+      const y = num(yd.values[i])
+      const x = xd ? num(xd.values[i]) : i + 1
+      if (y === null || x === null) continue
+      xs.push(x)
+      ys.push(y)
+    }
+    if (xs.length < 2) throw new Error(`not enough paired values for a fit (${xs.length})`)
+    const mx = xs.reduce((s, v) => s + v, 0) / xs.length
+    const my = ys.reduce((s, v) => s + v, 0) / ys.length
+    let sxx = 0
+    let sxy = 0
+    let syy = 0
+    for (let i = 0; i < xs.length; i++) {
+      const dx = xs[i] - mx
+      const dy = ys[i] - my
+      sxx += dx * dx
+      sxy += dx * dy
+      syy += dy * dy
+    }
+    const slope = sxx === 0 ? 0 : sxy / sxx
+    const intercept = my - slope * mx
+    const r2 = syy === 0 ? 1 : (sxy * sxy) / (sxx * syy)
+    const name = a.name ?? `${yd.cleanName || yd.name}_fit`
+    const fitted = []
+    for (let i = 0; i < n; i++) {
+      const x = xd ? num(xd.values[i]) : i + 1
+      fitted.push(x === null ? null : intercept + slope * x)
+    }
+    const r = await runWorker({ cmd: 'addwrite', path: requirePath(a), sheet: a.sheet, columns: [{ name, type: 0, values: fitted }], save: a.save, attach: a.attach })
+    const xlabel = xd ? xd.cleanName || xd.name : 'case number'
+    const lines = [`Fit ${yd.cleanName || yd.name} on ${xlabel}: y = ${fmt(intercept)} + ${fmt(slope)}·x`]
+    lines.push(`R² = ${fmt(r2)}; added ${r.added[0].name} (#${r.added[0].index})`)
     if (r.saved) lines.push(`Saved to ${r.saved}`)
     return lines.join('\n')
   },

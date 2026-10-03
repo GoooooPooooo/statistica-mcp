@@ -129,6 +129,7 @@ export const TS_PROCEDURES = [
   'arima',
   'spectral',
   'smoothing',
+  'shift',
   'exponential_smoothing',
   'differencing',
   'seasonal_decomposition',

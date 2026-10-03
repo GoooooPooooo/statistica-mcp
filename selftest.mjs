@@ -27,7 +27,9 @@ const IMPORT_CSV = join(process.env.TEMP, 'sta-selftest-import.csv')
 const GRAPH_PNG = join(process.env.TEMP, 'sta-selftest-graph.png')
 const GRAPH_PDF = join(process.env.TEMP, 'sta-selftest-graph.pdf')
 const SHOT = join(process.env.TEMP, 'sta-selftest-shot.png')
-for (const f of [WORK, WORK2, CSV, CSV2, XLSX, SAVED, IMPORT_CSV, GRAPH_PNG, GRAPH_PDF, SHOT]) rmSync(f, { force: true })
+const G3D = join(process.env.TEMP, 'sta-selftest-3d.png')
+const GLINE = join(process.env.TEMP, 'sta-selftest-line.png')
+for (const f of [WORK, WORK2, CSV, CSV2, XLSX, SAVED, IMPORT_CSV, GRAPH_PNG, GRAPH_PDF, SHOT, G3D, GLINE]) rmSync(f, { force: true })
 copyFileSync(SRC, WORK)
 copyFileSync(SRC, WORK2)
 writeFileSync(IMPORT_CSV, 'x;y;label\n1;2.5;a\n2;3.1;b\n3;4.7;c\n', 'utf8')
@@ -205,6 +207,14 @@ await check('list sheets', 'list_sheets', { path: WORK }, { mustInclude: 'sheet(
 await check('set measurement level', 'set_measurement', { path: WORK, variable: 2, type: 'categorical' }, { mustInclude: 'categorical' })
 await check('value labels', 'value_labels', { path: WORK, variable: 2, labels: { 112: 'LOW', 118: 'MID' } }, { mustInclude: 'label(s) applied' })
 
+// --- lab-3 building blocks ------------------------------------------------
+await check('time series: shift', 'statistica_time_series', { path: WORK, procedure: 'shift', variables: [11], lag: 1 }, { mustInclude: 'SaveVariables' })
+await check('fit line', 'add_fit_line', { path: WORK, y: 11 }, { mustInclude: 'added' })
+await check('3D surface graph', 'statistica_graph', { path: WORK, module: 11021, variables: '2 3 4', properties: { GraphType: 6 }, out: G3D }, { mustInclude: 'saved graphs' })
+await check('multi-line graph', 'statistica_graph', { path: WORK, module: 11012, variables: '2 3', properties: { GraphType: 1 }, out: GLINE }, { mustInclude: 'saved graphs' })
+console.log(`      3d on disk: ${existsSync(G3D)} (${existsSync(G3D) ? readFileSync(G3D).length : 0} bytes)`)
+console.log(`      line on disk: ${existsSync(GLINE)} (${existsSync(GLINE) ? readFileSync(GLINE).length : 0} bytes)`)
+
 console.log(`\n${'='.repeat(60)}\nresult: ${pass} passed, ${fail} failed\n${'='.repeat(60)}`)
 if (failures.length) {
   console.log('failed checks:')
@@ -212,5 +222,5 @@ if (failures.length) {
 }
 
 p.stdin.end()
-for (const f of [WORK, WORK2, CSV, CSV2, XLSX, SAVED, IMPORT_CSV, GRAPH_PNG, GRAPH_PDF, SHOT]) rmSync(f, { force: true })
+for (const f of [WORK, WORK2, CSV, CSV2, XLSX, SAVED, IMPORT_CSV, GRAPH_PNG, GRAPH_PDF, SHOT, G3D, GLINE]) rmSync(f, { force: true })
 process.exit(fail > 0 ? 1 : 0)

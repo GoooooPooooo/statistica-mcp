@@ -61,12 +61,17 @@ function Invoke-analysis($app, $ss, $req) {
       if ($null -eq $v) { $null = $warnings.Add("saveGraph: no graph in '$key'") }
       else {
         $list = @()
-        $cnt = $null
-        try { $cnt = [int](comGet $v 'Count' @()) } catch { $cnt = $null }
-        if ($null -ne $cnt) {
-          for ($gi = 1; $gi -le $cnt; $gi++) { try { $list += , (comGet $v 'Item' @($gi)) } catch { } }
+        if ($v -is [System.Array]) {
+          foreach ($item in $v) { $list += , $item }
         }
-        else { $list += , $v }
+        else {
+          $cnt = $null
+          try { $cnt = [int](comGet $v 'Count' @()) } catch { $cnt = $null }
+          if ($null -ne $cnt) {
+            for ($gi = 1; $gi -le $cnt; $gi++) { try { $list += , (comGet $v 'Item' @($gi)) } catch { } }
+          }
+          else { $list += , $v }
+        }
         $idx = 1
         foreach ($g in $list) {
           $path = $outPath
