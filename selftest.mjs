@@ -18,12 +18,14 @@ if (!existsSync(SRC)) {
 }
 
 const WORK = join(process.env.TEMP, 'sta-selftest-work.sta')
+const WORK2 = join(process.env.TEMP, 'sta-selftest-work2.sta')
 const CSV = join(process.env.TEMP, 'sta-selftest-out.csv')
 const SAVED = join(process.env.TEMP, 'sta-selftest-saved.sta')
 const IMPORT_CSV = join(process.env.TEMP, 'sta-selftest-import.csv')
 const GRAPH_PNG = join(process.env.TEMP, 'sta-selftest-graph.png')
-for (const f of [WORK, CSV, SAVED, IMPORT_CSV, GRAPH_PNG]) rmSync(f, { force: true })
+for (const f of [WORK, WORK2, CSV, SAVED, IMPORT_CSV, GRAPH_PNG]) rmSync(f, { force: true })
 copyFileSync(SRC, WORK)
+copyFileSync(SRC, WORK2)
 writeFileSync(IMPORT_CSV, 'x;y;label\n1;2.5;a\n2;3.1;b\n3;4.7;c\n', 'utf8')
 
 const p = spawn(process.execPath, [SERVER], { stdio: ['pipe', 'pipe', 'pipe'] })
@@ -175,6 +177,18 @@ await check('reopen the saved copy', 'describe_spreadsheet', { path: SAVED }, { 
 await check('import text file', 'import_data', { source: IMPORT_CSV, format: 'text', separator: ';' }, { mustInclude: 'variables' })
 await check('delete the test variable', 'delete_variables', { path: SAVED, from: 1, to: 1 })
 
+// --- data editing: case names, sort, select, recode -----------------------
+await check('read case names', 'case_names', { path: WORK2, limit: 5 }, { mustInclude: 'named:' })
+await check('set case names', 'case_names', { path: WORK2, names: ['S1', 'S2', 'S3'] }, { mustInclude: '"S1"' })
+await check('sort data', 'sort_data', { path: WORK2, variables: [2], order: 0 }, { mustInclude: 'Sorted' })
+await check('recode a variable', 'recode', { path: WORK2, variable: 1, map: { 1: 100, 2: 200 } }, { mustInclude: 'Recoded' })
+await check('select cases (non-missing)', 'select_cases', { path: WORK2, variable: 2, op: 'notmissing' }, { mustInclude: 'Kept' })
+
+// --- new statistical presets ---------------------------------------------
+await check('ANOVA / GLM', 'statistica_anova', { path: WORK, dependent: 2, between: [1] }, { mustInclude: 'UnivariateResults' })
+await check('factor analysis', 'statistica_factor', { path: WORK, variables: [2, 3, 4], factors: 2 }, { mustInclude: 'Eigenvalues' })
+await check('lagged correlation matrix', 'statistica_correlation_matrix', { path: WORK, variable: 2, lags: 3 }, { mustInclude: 'Lag1' })
+
 console.log(`\n${'='.repeat(60)}\nresult: ${pass} passed, ${fail} failed\n${'='.repeat(60)}`)
 if (failures.length) {
   console.log('failed checks:')
@@ -182,5 +196,5 @@ if (failures.length) {
 }
 
 p.stdin.end()
-for (const f of [WORK, CSV, SAVED, IMPORT_CSV, GRAPH_PNG]) rmSync(f, { force: true })
+for (const f of [WORK, WORK2, CSV, SAVED, IMPORT_CSV, GRAPH_PNG]) rmSync(f, { force: true })
 process.exit(fail > 0 ? 1 : 0)
