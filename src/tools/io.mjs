@@ -122,7 +122,7 @@ const handlers = {
   },
 
   async save_spreadsheet(a) {
-    const r = await runWorker({ cmd: 'save_as', path: requirePath(a), sheet: a.sheet, out: a.out, overwrite: a.overwrite, copy: a.copy })
+    const r = await runWorker({ cmd: 'save_as', path: requirePath(a), sheet: a.sheet, out: a.out, overwrite: a.overwrite, copy: a.copy, attach: a.attach })
     return `Saved ${r.copy ? 'a copy' : 'in place'} to ${r.out} (${r.bytes} bytes)`
   },
 
