@@ -72,6 +72,8 @@
 | PDF-экспорт | PNG → PDF своим конвертером (zlib) | `SaveAsPDF`/`SaveAsFormat(PDF)` отдают `False`; PDF с валидным `xref`. |
 | Кластерный анализ | модуль 2201, `Run` → `Variables` → `Run` | `AmalgamationSchedule`, `DistanceMatrix`, `DescriptiveStatistics`. |
 | Список листов | `Application.Spreadsheets` | `list_sheets`; открытие `.stw` с несколькими листами по имени/индексу. |
+| Скриншот окна | `CopyFromScreen` + `Activate()` документа | `PrintWindow` не рисует дочерние MDI-окна; `mode=document` снимает таблицу/график. |
+| Повтор COM | `New-ComApp` (3 попытки) | Зависший экземпляр даёт разовый `E_FAIL`; создание повторяется. |
 
 ### Почему правка данных делается в одном вызове воркера
 

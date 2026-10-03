@@ -73,7 +73,7 @@ $app.Quit()
 node selftest.mjs "C:\путь\к\LAB3.sta"
 ```
 
-Скрипт создаёт временную копию файла, прогоняет **44 проверки** (все инструменты, включая анализы, формулы, правку данных, уровни измерения, метки значений, ANOVA, кластерный и факторный анализ, экспорт PNG/PDF/CSV/XLSX и импорт) и печатает результат. Исходный файл не изменяется.
+Скрипт создаёт временную копию файла, прогоняет **45 проверок** (все инструменты, включая анализы, формулы, правку данных, уровни измерения, метки значений, ANOVA, кластерный и факторный анализ, экспорт PNG/PDF/CSV/XLSX, скриншот окна и импорт) и печатает результат. Исходный файл не изменяется.
 
 ---
 
@@ -132,6 +132,7 @@ node scripts/check.mjs --external # дополнительно prettier / eslint
 | `export_csv` | Экспорт листа штатным CSV-писателем. |
 | `save_spreadsheet` | Сохранение листа в новый файл (`.sta`, `.stw`, `.csv`, `.xlsx`). |
 | `statistica_graph` | Построение графика (`module` + `variables`) и экспорт в `.png`/`.jpg`/`.emf` (`out`). |
+| `statistica_screenshot` | Показать окно STATISTICA и снять экран для отчёта (`mode`: `screen` — весь экран по умолчанию, `window` — окно приложения, `document` — активная таблица/график). |
 
 ### Режим «вживую» (`attach`)
 
@@ -291,6 +292,7 @@ run_analysis {
 - **Live-режим.** `Marshal.GetActiveObject('STATISTICA.Application')` есть в PowerShell 5.1 (нет в PowerShell 7); в режиме `attach` программа не закрывается.
 - **Модальные окна.** В headless-режиме воркер ставит `Application.DisplayAlert = $false`, экспортирует таблицы через `ExportTextEx`/`ExportXLS` (без окон «features will be lost»/«Save As Text File») и перед выходом закрывает все документы `Close($false)`, поэтому окно «Save changes to Workbook1?» не блокирует `Quit`.
 - **PDF.** `Graph.SaveAsPDF`/`SaveAsFormat(PDF)` возвращают `False`; PDF собирается встроенным конвертером PNG→PDF (граф экспортируется в PNG, затем оборачивается в PDF).
+- **Скриншоты.** `statistica_screenshot` показывает окно (`Visible=$true`) и снимает пиксели через `Graphics.CopyFromScreen`: `PrintWindow` не отрисовывает дочерние MDI-окна (таблицу/график), а прямоугольник окна при DPI-масштабировании обрезается, поэтому по умолчанию (`mode=screen`) снимается весь экран — обрезать можно вручную. `window` — окно приложения, `document` — только активная таблица/график.
 - **Методы с `out`-параметрами** (`Statistics`, `ColumnStats`) через `CallByName` не работают, поэтому часть описательных статистик считает Node.
 
 ---
@@ -332,7 +334,7 @@ statistica/
       index.mjs                  сборка инструментов и обработчиков
       inspect.mjs                info, list, describe, list_sheets, read, describe_analysis
       edit.mjs                   write, formula, add/rename/delete, sort/select/recode, levels/labels
-      io.mjs                     export_csv, save_spreadsheet, import_data
+      io.mjs                     export_csv, save_spreadsheet, import_data, screenshot
       stats.mjs                  описательные, корреляция, регрессия, ANOVA, кластер, ТС и др.
       engine.mjs                 run_analysis
   sta.ps1                        точка входа COM-воркера
@@ -340,11 +342,12 @@ statistica/
     com.ps1                      низкоуровневые вызовы COM, подавление диалогов
     sheet.ps1                    доступ к листу (чтение/запись переменных)
     result.ps1                   маршалинг результатов анализа
+    screenshot.ps1               снимок окна STATISTICA (CopyFromScreen)
     commands/
       structure.ps1              describe, read, write, sort, select, recode, levels, labels, sheets
       io.ps1                     export_csv, save_as, import (ExportTextEx/ExportXLS)
       analysis.ps1               describe_analysis, analysis
-  selftest.mjs                   самопроверка (44 проверки)
+  selftest.mjs                   самопроверка (45 проверок)
   scripts/
     check.mjs                    линтер: парсинг, импорты, стиль (--fix, --strict, --external)
   .editorconfig                  правила форматирования
