@@ -77,6 +77,21 @@ node selftest.mjs "C:\путь\к\LAB3.sta"
 
 ---
 
+## Проверка кода
+
+Встроенный линтер без зависимостей (аналог `ruff check`): синтаксис JS (`node --check`), синтаксис PowerShell (AST-парсер), разрешение `import` и dot-source, разбор JSON, наличие обработчиков у инструментов, а также стиль (CRLF, хвостовые пробелы, финальный перевод строки, табы, длинные строки).
+
+```bash
+node scripts/check.mjs            # проверка
+node scripts/check.mjs --fix      # исправить CRLF / хвостовые пробелы / финальный перевод
+node scripts/check.mjs --strict   # предупреждения тоже считать ошибкой
+node scripts/check.mjs --external # дополнительно prettier / eslint / PSScriptAnalyzer, если установлены
+```
+
+Или через npm: `npm run check`, `npm run check:fix`, `npm run check:strict`. Код возврата — `1` при ошибках. Правила форматирования продублированы в `.editorconfig`.
+
+---
+
 ## Архитектура
 
 ```
@@ -324,6 +339,9 @@ statistica/
       io.ps1                     export_csv, save_as, import
       analysis.ps1               describe_analysis, analysis
   selftest.mjs                   самопроверка (37 проверок)
+  scripts/
+    check.mjs                    линтер: парсинг, импорты, стиль (--fix, --strict, --external)
+  .editorconfig                  правила форматирования
   package.json                   зависимостей нет
   reports/
     development-report.md        отчёт: проблемы, гипотезы, решения, итог
