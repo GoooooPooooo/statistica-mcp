@@ -93,6 +93,7 @@ const tools = [
         properties: { type: 'object', additionalProperties: true, description: 'Dialog properties to set before capture.' },
         run: { type: 'boolean', description: 'Call Run before capture (to reach the Transformations panel).' },
         title: { type: 'string', description: 'Capture only a dialog whose title contains this text.' },
+        mode: { type: 'string', enum: ['dialog', 'screen'], description: 'screen = full-screen capture with the dialog on top (default), dialog = only the dialog window.' },
         out: { type: 'string', description: 'Destination image path (.png). Required.' },
       },
       required: ['module', 'out'],
@@ -171,10 +172,11 @@ const handlers = {
       properties: a.properties,
       run: a.run,
       title: a.title,
+      mode: a.mode,
       out: a.out,
       attach: a.attach,
     })
-    return `Dialog "${r.title}" captured to ${r.out} (${r.bytes} bytes, ${r.width}x${r.height})`
+    return `Dialog "${r.title}" captured to ${r.out} (${r.bytes} bytes, ${r.width}x${r.height}, ${r.mode} mode)`
   },
 
   async statistica_open(a) {
