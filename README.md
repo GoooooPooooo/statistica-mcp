@@ -292,7 +292,7 @@ run_analysis {
 - **Live-режим.** `Marshal.GetActiveObject('STATISTICA.Application')` есть в PowerShell 5.1 (нет в PowerShell 7); в режиме `attach` программа не закрывается.
 - **Модальные окна.** В headless-режиме воркер ставит `Application.DisplayAlert = $false`, экспортирует таблицы через `ExportTextEx`/`ExportXLS` (без окон «features will be lost»/«Save As Text File») и перед выходом закрывает все документы `Close($false)`, поэтому окно «Save changes to Workbook1?» не блокирует `Quit`.
 - **PDF.** `Graph.SaveAsPDF`/`SaveAsFormat(PDF)` возвращают `False`; PDF собирается встроенным конвертером PNG→PDF (граф экспортируется в PNG, затем оборачивается в PDF).
-- **Скриншоты.** `statistica_screenshot` показывает окно (`Visible=$true`) и снимает пиксели через `Graphics.CopyFromScreen`: `PrintWindow` не отрисовывает дочерние MDI-окна (таблицу/график), а прямоугольник окна при DPI-масштабировании обрезается, поэтому по умолчанию (`mode=screen`) снимается весь экран — обрезать можно вручную. `window` — окно приложения, `document` — только активная таблица/график.
+- **Скриншоты.** `statistica_screenshot` показывает окно (`Visible=$true`) и снимает пиксели через `Graphics.CopyFromScreen`: `PrintWindow` не отрисовывает дочерние MDI-окна (таблицу/график), поэтому по умолчанию (`mode=screen`) снимается весь экран — обрезать можно вручную (`window` — окно приложения, `document` — только активная таблица/график). Воркер объявляет себя DPI-aware (`SetProcessDPIAware`): без этого Windows виртуализирует экран (2560×1359 вместо 5120×2718) и кадр обрезается.
 - **Методы с `out`-параметрами** (`Statistics`, `ColumnStats`) через `CallByName` не работают, поэтому часть описательных статистик считает Node.
 
 ---

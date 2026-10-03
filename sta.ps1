@@ -7,6 +7,14 @@ $ErrorActionPreference = 'Stop'
 $MISSING = -999999998.0
 $inv = [System.Globalization.CultureInfo]::InvariantCulture
 
+# Make the process DPI-aware before any window is used: otherwise Windows
+# virtualizes the screen and the screenshot is smaller than the real display.
+try {
+  Add-Type -Namespace StaDpi -Name Win -MemberDefinition '[System.Runtime.InteropServices.DllImport("user32.dll")] public static extern bool SetProcessDPIAware();'
+  $null = [StaDpi.Win]::SetProcessDPIAware()
+}
+catch { }
+
 Add-Type -AssemblyName Microsoft.VisualBasic
 $CB = [Microsoft.VisualBasic.CallType]
 
