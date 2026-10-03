@@ -1,4 +1,4 @@
-param(
+﻿param(
   [Parameter(Mandatory=$true)][string]$RequestFile,
   [Parameter(Mandatory=$true)][string]$ResponseFile
 )
@@ -35,13 +35,14 @@ try {
     else {
       $app = New-Object -ComObject 'STATISTICA.Application'
       $app.Visible = $false
+      Disable-Alerts $app
     }
     $result.attached = $attached
     $result.version = [string]$app.Version
     $result.versionEx = [string]$app.VersionEx
     $result.exe = [string]$app.Path
     $result.pid = $app.ProcessID
-    if (-not $attached) { $app.Quit(); $app = $null }
+    if (-not $attached) { Close-AllDocuments $app; $app.Quit(); $app = $null }
   }
   else {
     if ($attached) {
@@ -50,6 +51,7 @@ try {
     else {
       $app = New-Object -ComObject 'STATISTICA.Application'
       $app.Visible = $false
+      Disable-Alerts $app
     }
     $ss = $null
     if ($req.path) { $ss = Open-Sheet $app ([string]$req.path) $req.sheet }
@@ -75,7 +77,7 @@ try {
       $result.saved = $sv
     }
 
-    if (-not $attached) { $app.Quit(); $app = $null }
+    if (-not $attached) { Close-AllDocuments $app; $app.Quit(); $app = $null }
   }
 
   $out = @{ ok = $true; result = $result }
@@ -88,6 +90,7 @@ catch {
 }
 finally {
   if ($null -ne $app -and -not $attached) {
+    try { Close-AllDocuments $app } catch { }
     try { $app.Quit() } catch { }
   }
 }

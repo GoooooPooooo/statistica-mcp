@@ -11,6 +11,7 @@ const tools = [
         path: { type: 'string', description: 'Absolute path to the source file.' },
         sheet: { type: ['string', 'integer'] },
         out: { type: 'string', description: 'Destination CSV path. Parent folders are created.' },
+        separator: { type: 'string', description: 'Field separator character (e.g. "," or ";"). Default comma.' },
       },
       required: ['path', 'out'],
       additionalProperties: false,
@@ -55,7 +56,7 @@ const tools = [
 
 const handlers = {
   async export_csv(a) {
-    const r = await runWorker({ cmd: 'export_csv', path: requirePath(a), sheet: a.sheet, out: a.out })
+    const r = await runWorker({ cmd: 'export_csv', path: requirePath(a), sheet: a.sheet, out: a.out, separator: a.separator })
     return `Exported to ${r.out} (${r.bytes} bytes)`
   },
 

@@ -20,10 +20,12 @@ if (!existsSync(SRC)) {
 const WORK = join(process.env.TEMP, 'sta-selftest-work.sta')
 const WORK2 = join(process.env.TEMP, 'sta-selftest-work2.sta')
 const CSV = join(process.env.TEMP, 'sta-selftest-out.csv')
+const CSV2 = join(process.env.TEMP, 'sta-selftest-out2.csv')
+const XLSX = join(process.env.TEMP, 'sta-selftest-out.xlsx')
 const SAVED = join(process.env.TEMP, 'sta-selftest-saved.sta')
 const IMPORT_CSV = join(process.env.TEMP, 'sta-selftest-import.csv')
 const GRAPH_PNG = join(process.env.TEMP, 'sta-selftest-graph.png')
-for (const f of [WORK, WORK2, CSV, SAVED, IMPORT_CSV, GRAPH_PNG]) rmSync(f, { force: true })
+for (const f of [WORK, WORK2, CSV, CSV2, XLSX, SAVED, IMPORT_CSV, GRAPH_PNG]) rmSync(f, { force: true })
 copyFileSync(SRC, WORK)
 copyFileSync(SRC, WORK2)
 writeFileSync(IMPORT_CSV, 'x;y;label\n1;2.5;a\n2;3.1;b\n3;4.7;c\n', 'utf8')
@@ -171,6 +173,10 @@ await check('regression (dependent on SERIES_G)', 'statistica_regression', { pat
 // --- io -------------------------------------------------------------------
 await check('export csv', 'export_csv', { path: WORK, out: CSV })
 console.log(`      csv on disk: ${existsSync(CSV)} (${existsSync(CSV) ? readFileSync(CSV).length : 0} bytes)`)
+await check('export csv with separator', 'export_csv', { path: WORK, out: CSV2, separator: ';' })
+console.log(`      csv2 on disk: ${existsSync(CSV2)} (${existsSync(CSV2) ? readFileSync(CSV2).length : 0} bytes)`)
+await check('save as .xlsx', 'save_spreadsheet', { path: WORK, out: XLSX, overwrite: true })
+console.log(`      xlsx on disk: ${existsSync(XLSX)} (${existsSync(XLSX) ? readFileSync(XLSX).length : 0} bytes)`)
 await check('save as .sta', 'save_spreadsheet', { path: WORK, out: SAVED, overwrite: true })
 console.log(`      sta on disk: ${existsSync(SAVED)} (${existsSync(SAVED) ? readFileSync(SAVED).length : 0} bytes)`)
 await check('reopen the saved copy', 'describe_spreadsheet', { path: SAVED }, { mustInclude: 'Size:' })
@@ -196,5 +202,5 @@ if (failures.length) {
 }
 
 p.stdin.end()
-for (const f of [WORK, WORK2, CSV, SAVED, IMPORT_CSV, GRAPH_PNG]) rmSync(f, { force: true })
+for (const f of [WORK, WORK2, CSV, CSV2, XLSX, SAVED, IMPORT_CSV, GRAPH_PNG]) rmSync(f, { force: true })
 process.exit(fail > 0 ? 1 : 0)

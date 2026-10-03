@@ -1,13 +1,39 @@
 # --- import / export / save ----------------------------------------------
+# Programmatic text/Excel export: unlike SaveAs, ExportTextEx/ExportXLS write the
+# file directly and never raise the "Save As Text File" / "features will be lost"
+# dialogs that would block headless automation.
+function Export-SpreadsheetText($ss, $out, $separator) {
+  $dir = [System.IO.Path]::GetDirectoryName($out)
+  if ($dir -and -not (Test-Path -LiteralPath $dir)) { $null = New-Item -ItemType Directory -Path $dir -Force }
+  if (Test-Path -LiteralPath $out) { Remove-Item -LiteralPath $out -Force }
+  $nc = [int]$ss.NumberOfCases
+  $nv = [int]$ss.NumberOfVariables
+  # (FileName, FirstRow, LastRow, FirstColumn, LastColumn, Separator, UseTextLabels,
+  #  CaseNamesToFirstColumn, VariableNamesToFirstRow, OverWriteFile, UseDisplay,
+  #  EnglishNumbers, includeHeaderAndInfoBox)
+  $null = $ss.ExportTextEx($out, 1, $nc, 1, $nv, $separator, $false, $false, $true, $true, $false, $true, $false)
+  return (Wait-File $out)
+}
+
+function Export-SpreadsheetXls($ss, $out) {
+  $dir = [System.IO.Path]::GetDirectoryName($out)
+  if ($dir -and -not (Test-Path -LiteralPath $dir)) { $null = New-Item -ItemType Directory -Path $dir -Force }
+  if (Test-Path -LiteralPath $out) { Remove-Item -LiteralPath $out -Force }
+  $nc = [int]$ss.NumberOfCases
+  $nv = [int]$ss.NumberOfVariables
+  # (FileName, FirstRow, LastRow, FirstColumn, LastColumn, UseTextLabels,
+  #  CaseNamesToFirstColumn, VariableNamesToFirstRow, OverWriteFile)
+  $null = $ss.ExportXLS($out, 1, $nc, 1, $nv, $false, $false, $true, $true)
+  return (Wait-File $out)
+}
+
 function Invoke-export_csv($app, $ss, $req) {
   $out = [string]$req.out
   if ($out -eq '') { throw 'out is required' }
   if ([System.IO.Path]::GetExtension($out) -eq '') { $out = $out + '.csv' }
-  $dir = [System.IO.Path]::GetDirectoryName($out)
-  if ($dir -and -not (Test-Path -LiteralPath $dir)) { $null = New-Item -ItemType Directory -Path $dir -Force }
-  if (Test-Path -LiteralPath $out) { Remove-Item -LiteralPath $out -Force }
-  $null = comCall $ss 'SaveAs' @($out, $true)
-  $len = Wait-File $out
+  $sep = 44
+  if ($null -ne $req.separator -and "$($req.separator)" -ne '') { $sep = [int][char][string]$req.separator }
+  $len = Export-SpreadsheetText $ss $out $sep
   return @{ out = $out; bytes = $len }
 }
 
@@ -20,9 +46,18 @@ function Invoke-save_as($app, $ss, $req) {
   if ($null -ne $req.copy -and $req.copy -eq $false) { $copy = $false }
   $exists = Test-Path -LiteralPath $out
   if ($exists -and -not $req.overwrite) { throw "file already exists (pass overwrite=true): $out" }
-  if ($copy) { $null = comCall $ss 'SaveCopyAs' @($out, $true) }
-  else { $null = comCall $ss 'SaveAs' @($out, $true) }
-  $len = Wait-File $out
+  $ext = [System.IO.Path]::GetExtension($out).ToLower()
+  if ($ext -eq '.csv' -or $ext -eq '.txt') {
+    $len = Export-SpreadsheetText $ss $out 44
+  }
+  elseif ($ext -eq '.xlsx' -or $ext -eq '.xls') {
+    $len = Export-SpreadsheetXls $ss $out
+  }
+  else {
+    if ($copy) { $null = comCall $ss 'SaveCopyAs' @($out, $true) }
+    else { $null = comCall $ss 'SaveAs' @($out, $true) }
+    $len = Wait-File $out
+  }
   return @{ out = $out; bytes = $len; copy = $copy }
 }
 

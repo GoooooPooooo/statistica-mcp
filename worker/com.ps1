@@ -41,6 +41,26 @@ function Set-LongName($ss, $idx, $value) {
   }
 }
 
+# Suppress modal dialogs/alerts so headless COM automation never blocks on a prompt.
+function Disable-Alerts($app) {
+  try { $app.DisplayAlert = $false } catch { }
+}
+# Discard every open document before quitting. Marking `Saved` is not enough:
+# STATISTICA still shows a blocking "Save changes to Workbook1?" prompt, so the
+# documents (graphs, workbooks, spreadsheets, reports) are closed with
+# SaveChanges = $false. Only used in headless mode, where results were already
+# returned to the caller and nothing must be persisted.
+function Close-AllDocuments($app) {
+  foreach ($coll in @('Graphs', 'Workbooks', 'Spreadsheets', 'Reports')) {
+    try {
+      $c = $app.$coll
+      for ($i = [int]$c.Count; $i -ge 1; $i--) {
+        try { $c.Item($i).Close($false, '') } catch { }
+      }
+    } catch { }
+  }
+}
+
 function Wait-File($path) {
   for ($i = 0; $i -lt 20; $i++) {
     if (Test-Path -LiteralPath $path) {
