@@ -72,11 +72,34 @@ try {
     $ss = $null
     if ($req.path) { $ss = Open-Sheet $app ([string]$req.path) $req.sheet }
     elseif ($attached -and $cmd -ne 'import') {
-      $ss = $app.ActiveSpreadsheet
+      $ss = $null
+      # If a sheet name/index is given, select it among the open spreadsheets.
+      if ($null -ne $req.sheet -and "$($req.sheet)" -ne '') {
+        $n = 0
+        try { $n = [int]$app.Spreadsheets.Count } catch { $n = 0 }
+        if ("$($req.sheet)" -match '^\d+$') {
+          $k = [int]$req.sheet
+          if ($k -ge 1 -and $k -le $n) { $ss = $app.Spreadsheets.Item($k) }
+        }
+        else {
+          for ($i = 1; $i -le $n; $i++) {
+            $s = $app.Spreadsheets.Item($i)
+            if ([string]$s.Name -eq "$($req.sheet)") { $ss = $s; break }
+          }
+        }
+      }
+      if ($null -eq $ss) { $ss = $app.ActiveSpreadsheet }
+      if ($null -eq $ss) {
+        # The active document may be a graph/output; fall back to the last sheet.
+        $n = 0
+        try { $n = [int]$app.Spreadsheets.Count } catch { $n = 0 }
+        if ($n -gt 0) { $ss = $app.Spreadsheets.Item($n) }
+      }
       if ($null -eq $ss) { throw 'no active spreadsheet in the running STATISTICA instance' }
       $script:sheetName = [string]$ss.Name
       $script:sheetIndex = 1
       try { $script:sheetIndex = [int]$ss.Index } catch { $script:sheetIndex = 1 }
+      $ss.Activate()
     }
     elseif ($cmd -notin @('import', 'open')) { throw "path is required for command '$cmd'" }
 

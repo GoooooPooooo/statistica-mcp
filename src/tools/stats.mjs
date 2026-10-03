@@ -330,6 +330,27 @@ const tools = [
       additionalProperties: false,
     },
   },
+  {
+    name: 'add_lag_column',
+    description:
+      'Compute the lag-m correlation product x(t)*x(t-lag) of a series, smooth it with a centered moving average, and append it as a named column to a target sheet (builds the Month + Lag1..LagK matrix step by step).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        sheet: { type: ['string', 'integer'], description: 'Source sheet holding the series.' },
+        variable: { type: ['string', 'integer'], description: 'Source series.' },
+        lag: { type: 'integer', minimum: 1, description: 'Correlation lag. Default 1.' },
+        window: { type: 'integer', minimum: 2, description: 'Centered moving-average window. Default 12.' },
+        mode: { type: 'string', enum: ['product', 'shift'], description: 'product = x(t)*x(t-lag) (default), shift = x(t-lag).' },
+        smooth: { type: 'boolean', description: 'Apply the centered moving average. Default true for product, false for shift.' },
+        target: { type: ['string', 'integer'], description: 'Target sheet to append the column to.' },
+        name: { type: 'string', description: 'New column name. Default "Lag<lag>".' },
+        save: { type: 'string', description: 'Optional destination path to persist the result as .sta.' },
+      },
+      required: ['variable', 'target'],
+      additionalProperties: false,
+    },
+  },
 ]
 
 const handlers = {
@@ -828,6 +849,40 @@ const handlers = {
     }
     const steps = [{ set: { Statistics: 0 } }, { run: true }, { set: opts }, { result: 'Summary' }, { result: 'Histograms' }]
     return analysis(a, 1301, steps)
+  },
+
+  async add_lag_column(a) {
+    const lag = a.lag ?? 1
+    const window = a.window ?? 12
+    const read = await runWorker({ cmd: 'read', attach: a.attach, sheet: a.sheet, variables: [a.variable] })
+    const d = read.data?.[0]
+    if (!d) throw new Error(`could not read variable ${a.variable}`)
+    const x = d.values.map((v) => (v === null || v === undefined ? null : Number(v)))
+    const mode = a.mode ?? 'product'
+    let values
+    if (mode === 'shift') {
+      values = x.map((_, i) => (i >= lag ? x[i - lag] : null))
+    } else {
+      const prod = x.map((v, i) => (i >= lag && v !== null && x[i - lag] !== null ? v * x[i - lag] : null))
+      if (a.smooth === false) {
+        values = prod
+      } else {
+        const half = Math.floor(window / 2)
+        values = prod.map((_, i) => {
+          let sum = 0
+          for (let k = i - half + 1; k <= i + half; k++) {
+            if (k < 0 || k >= prod.length || prod[k] === null) return null
+            sum += prod[k]
+          }
+          return sum / window
+        })
+      }
+    }
+    const name = a.name ?? `${mode === 'shift' ? 'Shift' : 'Lag'}${lag}`
+    const r = await runWorker({ cmd: 'addwrite', attach: a.attach, sheet: a.target, columns: [{ name, type: 0, values }], save: a.save })
+    const lines = [`Added ${r.added[0].name} (#${r.added[0].index}) to sheet "${a.target}": ${mode} lag ${lag}${a.smooth === false ? '' : `, centered SMA(${window})`}`]
+    if (r.saved) lines.push(`Saved to ${r.saved}`)
+    return lines.join('\n')
   },
 }
 

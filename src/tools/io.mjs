@@ -47,6 +47,7 @@ const tools = [
         variableNamesFromFirstRow: { type: 'boolean', description: 'Text format: use the first row as variable names. Default true.' },
         caseNamesFromFirstColumn: { type: 'boolean', description: 'Use the first column as case names. Default false.' },
         save: { type: 'string', description: 'Optional destination .sta path.' },
+        attach: { type: 'boolean', description: 'Import into the already-running STATISTICA window (creates a new sheet there).' },
       },
       required: ['source'],
       additionalProperties: false,
@@ -114,6 +115,7 @@ const handlers = {
       variableNamesFromFirstRow: a.variableNamesFromFirstRow,
       caseNamesFromFirstColumn: a.caseNamesFromFirstColumn,
       save: a.save,
+      attach: a.attach,
     })
     const lines = [`Imported ${a.source}`, `Result: ${r.cases} cases x ${r.variables} variables ("${r.name}")`]
     if (r.saved) lines.push(`Saved to ${r.saved} (${r.bytes} bytes)`)
