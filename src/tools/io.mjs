@@ -80,6 +80,26 @@ const tools = [
     },
   },
   {
+    name: 'statistica_dialog',
+    description:
+      'Open an analysis module dialog in the running STATISTICA window and capture the actual setup panel to an image (Time Series/Forecasting, Transformations tabs, etc.). Use `run:true` to advance to the second-level panel.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'File to open (omit in attach mode).' },
+        sheet: { type: ['string', 'integer'] },
+        module: { type: ['string', 'integer'], description: 'Analysis module id (e.g. 1901).' },
+        variables: { type: 'string', description: 'Variable list to set in the dialog, e.g. "11".' },
+        properties: { type: 'object', additionalProperties: true, description: 'Dialog properties to set before capture.' },
+        run: { type: 'boolean', description: 'Call Run before capture (to reach the Transformations panel).' },
+        title: { type: 'string', description: 'Capture only a dialog whose title contains this text.' },
+        out: { type: 'string', description: 'Destination image path (.png). Required.' },
+      },
+      required: ['module', 'out'],
+      additionalProperties: false,
+    },
+  },
+  {
     name: 'statistica_open',
     description:
       'Launch a visible STATISTICA window (optionally opening a file) and leave it running. Subsequent calls with attach:true edit this same window — no repeated start/stop of the application.',
@@ -139,6 +159,22 @@ const handlers = {
     })
     const fg = r.foreground === false ? '; warning: STATISTICA could not be brought to the foreground' : ''
     return `Screenshot saved to ${r.out} (${r.bytes} bytes, ${r.mode ?? 'screen'} mode)${fg}`
+  },
+
+  async statistica_dialog(a) {
+    const r = await runWorker({
+      cmd: 'dialog',
+      path: a.path,
+      sheet: a.sheet,
+      module: a.module,
+      variables: a.variables,
+      properties: a.properties,
+      run: a.run,
+      title: a.title,
+      out: a.out,
+      attach: a.attach,
+    })
+    return `Dialog "${r.title}" captured to ${r.out} (${r.bytes} bytes, ${r.width}x${r.height})`
   },
 
   async statistica_open(a) {
