@@ -73,7 +73,7 @@ $app.Quit()
 node selftest.mjs "C:\путь\к\LAB3.sta"
 ```
 
-Скрипт создаёт временную копию файла, прогоняет **37 проверок** (все инструменты, включая анализы, формулы, правку данных, ANOVA, факторный и импорт) и печатает результат. Исходный файл не изменяется.
+Скрипт создаёт временную копию файла, прогоняет **44 проверки** (все инструменты, включая анализы, формулы, правку данных, уровни измерения, метки значений, ANOVA, кластерный и факторный анализ, экспорт PNG/PDF/CSV/XLSX и импорт) и печатает результат. Исходный файл не изменяется.
 
 ---
 
@@ -114,6 +114,7 @@ node scripts/check.mjs --external # дополнительно prettier / eslint
 | `statistica_info` | Доступность COM, версия, путь к `statist.exe`, PID. Вызывайте первым при сбоях. |
 | `list_analysis_modules` | Список всех модулей анализа (id + имя) для `run_analysis`. |
 | `describe_spreadsheet` | Открыть `.sta`/`.stw`: размер, список переменных (индекс, короткое/чистое/длинное имя, тип, уровень измерения, код пропуска). |
+| `list_sheets` | Список листов файла (индекс, имя, размер) без загрузки данных. |
 | `read_variables` | Чтение данных. Числовые колонки — векторно, текстовые — строками; пропуски → `null`. |
 | `write_variables` | Полная перезапись переменных; числовая колонка требует ровно по значению на наблюдение. |
 | `add_variables` | Добавление пустых переменных (`0` numeric, `1` text, `2` integer, `3` byte). |
@@ -124,6 +125,8 @@ node scripts/check.mjs --external # дополнительно prettier / eslint
 | `sort_data` | Сортировка по одному или нескольким ключам (имена наблюдений переезжают вместе со строками). |
 | `select_cases` | Оставить только строки, удовлетворяющие условию (`gt/ge/lt/le/eq/ne/in/notin/missing/notmissing`). |
 | `recode` | Перекодирование значений переменной по таблице `map` (+ `default`, `missing`). |
+| `set_measurement` | Уровень измерения переменной (`auto`/`continuous`/`categorical`/`ordinal`) — чтобы STATISTICA трактовала её как фактор или ковариату. |
+| `value_labels` | Текстовые метки значений переменной (`SetTextLabel`); `clear` сбрасывает метки. |
 | `set_formula` | Запись формулы в переменную (`=v9*v10`) и пересчёт (`Recalculate`). |
 | `import_data` | Импорт текста/Excel в STATISTICA. |
 | `export_csv` | Экспорт листа штатным CSV-писателем. |
@@ -150,10 +153,11 @@ write_variables { "path": "...\\LAB3.sta", "columns": [{"index": 5, "values": [ 
 | `statistica_t_test` | t-тесты: `single` (к константе) и `dependent` (парные). |
 | `statistica_regression` | Множественная регрессия (модуль GRM). |
 | `statistica_anova` | Дисперсионный анализ / GLM (модуль 4100): таблица ANOVA (`UnivariateResults`) и оценки параметров. |
+| `statistica_cluster` | Иерархический кластерный анализ (модуль 2201): расписание объединений, матрица расстояний, описательные статистики. |
 | `statistica_factor` | Факторный анализ / метод главных компонент (модуль 2101): собственные значения, нагрузки, общности. |
 | `statistica_correlation_matrix` | Строит лаговые произведения ряда (`Lag1..LagK` = `x(t)*x(t-L)`, опц. SMA) или сдвинутые ряды (`mode:"shift"`). |
 | `statistica_time_series` | Временные ряды: `descriptives`, `autocorrelation`, `partial_autocorrelation`, `cross_correlation`, `arima`, `spectral`, `smoothing`, `exponential_smoothing`, `differencing`, `seasonal_decomposition`. |
-| `statistica_graph` | График и его экспорт в изображение (2D scatter, 2D line, 3D surface и др.). |
+| `statistica_graph` | График и его экспорт в изображение (`.png`/`.jpg`/`.emf`); `.pdf` собирается встроенным конвертером PNG→PDF. |
 
 ### Универсальный движок
 
@@ -285,7 +289,8 @@ run_analysis {
 - **Формулы.** Формула хранится в длинном имени переменной. `VariableLongName` — индексируемое свойство с аксессором `Set`, `CallByName` его не берёт; присваивать нативно (`$ss.VariableLongName(idx) = "=..."`), затем `Recalculate(idx)`.
 - **Графики.** Чтение `.Graphs` само строит график (явный `Run` у графового модуля даёт `E_UNEXPECTED`); экспорт — `Graph.SaveAs(path)`, расширение задаёт формат.
 - **Live-режим.** `Marshal.GetActiveObject('STATISTICA.Application')` есть в PowerShell 5.1 (нет в PowerShell 7); в режиме `attach` программа не закрывается.
-- **`SaveAsPDF` зависает** в headless-режиме — не используется.
+- **Модальные окна.** В headless-режиме воркер ставит `Application.DisplayAlert = $false`, экспортирует таблицы через `ExportTextEx`/`ExportXLS` (без окон «features will be lost»/«Save As Text File») и перед выходом закрывает все документы `Close($false)`, поэтому окно «Save changes to Workbook1?» не блокирует `Quit`.
+- **PDF.** `Graph.SaveAsPDF`/`SaveAsFormat(PDF)` возвращают `False`; PDF собирается встроенным конвертером PNG→PDF (граф экспортируется в PNG, затем оборачивается в PDF).
 - **Методы с `out`-параметрами** (`Statistics`, `ColumnStats`) через `CallByName` не работают, поэтому часть описательных статистик считает Node.
 
 ---
@@ -321,24 +326,25 @@ statistica/
     worker.mjs                   запуск sta.ps1 через PowerShell, temp-файлы
     modules.mjs                  таблицы модулей и enum-констант
     format.mjs                   форматирование таблиц/результатов
-    analysis.mjs                 обёртка analysis()
+    analysis.mjs                 обёртка analysis() (+ экспорт PDF)
+    pdf.mjs                      конвертер PNG -> PDF (без зависимостей)
     tools/
       index.mjs                  сборка инструментов и обработчиков
-      inspect.mjs                info, list, describe, read, describe_analysis
-      edit.mjs                   write, formula, add/rename/delete, sort/select/recode
+      inspect.mjs                info, list, describe, list_sheets, read, describe_analysis
+      edit.mjs                   write, formula, add/rename/delete, sort/select/recode, levels/labels
       io.mjs                     export_csv, save_spreadsheet, import_data
-      stats.mjs                  описательные, корреляция, регрессия, ANOVA, ТС и др.
+      stats.mjs                  описательные, корреляция, регрессия, ANOVA, кластер, ТС и др.
       engine.mjs                 run_analysis
   sta.ps1                        точка входа COM-воркера
   worker/
-    com.ps1                      низкоуровневые вызовы COM
+    com.ps1                      низкоуровневые вызовы COM, подавление диалогов
     sheet.ps1                    доступ к листу (чтение/запись переменных)
     result.ps1                   маршалинг результатов анализа
     commands/
-      structure.ps1              describe, read, write, sort, select, recode
-      io.ps1                     export_csv, save_as, import
+      structure.ps1              describe, read, write, sort, select, recode, levels, labels, sheets
+      io.ps1                     export_csv, save_as, import (ExportTextEx/ExportXLS)
       analysis.ps1               describe_analysis, analysis
-  selftest.mjs                   самопроверка (37 проверок)
+  selftest.mjs                   самопроверка (44 проверки)
   scripts/
     check.mjs                    линтер: парсинг, импорты, стиль (--fix, --strict, --external)
   .editorconfig                  правила форматирования
