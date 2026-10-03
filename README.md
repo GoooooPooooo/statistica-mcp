@@ -73,7 +73,7 @@ $app.Quit()
 node selftest.mjs "C:\путь\к\LAB3.sta"
 ```
 
-Скрипт создаёт временную копию файла, прогоняет **49 проверок** (все инструменты, включая анализы, формулы, правку данных, уровни измерения, метки значений, запаздывание и сглаживание ВР, ANOVA, кластерный и факторный анализ, 2D/3D-графики, fit-линию, экспорт PNG/PDF/CSV/XLSX, скриншот окна и импорт) и печатает результат. Исходный файл не изменяется.
+Скрипт создаёт временную копию файла, прогоняет **50 проверок** (все инструменты, включая анализы, формулы, правку данных, уровни измерения, метки значений, запаздывание и сглаживание ВР, SVB-макрос, ANOVA, кластерный и факторный анализ, 2D/3D-графики, fit-линию, экспорт PNG/PDF/CSV/XLSX, скриншот окна и импорт) и печатает результат. Исходный файл не изменяется.
 
 ---
 
@@ -159,6 +159,7 @@ write_variables { "path": "...\\LAB3.sta", "columns": [{"index": 5, "values": [ 
 | `statistica_correlation_matrix` | Строит лаговые произведения ряда (`Lag1..LagK` = `x(t)*x(t-L)`, опц. SMA) или сдвинутые ряды (`mode:"shift"`). |
 | `statistica_time_series` | Временные ряды: `descriptives`, `autocorrelation`, `partial_autocorrelation`, `cross_correlation`, `arima`, `spectral`, `smoothing` (центрир. MA), `shift` (запаздывание/опережение), `exponential_smoothing`, `differencing`, `seasonal_decomposition`. |
 | `add_fit_line` | МНК-линия `y` по `x` (по умолчанию по номеру наблюдения) — пишет fitted-значения новой переменной (замена интерактивного fit на графике). |
+| `run_macro` | Выполнить код STATISTICA BASIC (SVB) или `.svb`-файл, где `ActiveSpreadsheet` — открытый лист (для рекуррентных моделей DWLS/Lowess/EWPR из ЛР6–8). |
 | `statistica_graph` | График и его экспорт в изображение (`.png`/`.jpg`/`.emf`); `.pdf` собирается встроенным конвертером PNG→PDF. |
 
 ### Универсальный движок
@@ -348,7 +349,8 @@ statistica/
       structure.ps1              describe, read, write, sort, select, recode, levels, labels, sheets
       io.ps1                     export_csv, save_as, import (ExportTextEx/ExportXLS)
       analysis.ps1               describe_analysis, analysis
-  selftest.mjs                   самопроверка (49 проверок)
+      macro.ps1                  run_macro (SVB, ActiveSpreadsheet)
+  selftest.mjs                   самопроверка (50 проверок)
   scripts/
     check.mjs                    линтер: парсинг, импорты, стиль (--fix, --strict, --external)
   .editorconfig                  правила форматирования
