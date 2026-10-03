@@ -83,8 +83,8 @@ node selftest.mjs "C:\путь\к\LAB3.sta"
 агент  ──JSON-RPC 2.0 (stdio)──▶  server.mjs  ──запуск процесса──▶  sta.ps1  ──COM──▶  statist.exe
 ```
 
-- **`server.mjs`** — MCP-сервер. Разбор протокола, схемы инструментов, таблицы модулей и enum-констант, форматирование результатов. На stdout пишет только JSON-RPC, все логи в stderr.
-- **`sta.ps1`** — воркер. Читает JSON-запрос из файла, делает вызовы COM, пишет JSON-ответ в файл. Обмен через файлы снимает проблемы с кодировками кириллицы в PowerShell 5.1.
+- **`server.mjs`** — тонкая точка входа. Разбор протокола и логика разложены по `src/`: `protocol.mjs` (JSON-RPC), `worker.mjs` (запуск процесса), `modules.mjs` (таблицы модулей и enum-констант), `format.mjs` (форматирование результатов), `analysis.mjs`, а инструменты — по группам в `src/tools/` (схема и обработчик лежат рядом). На stdout пишет только JSON-RPC, все логи в stderr.
+- **`sta.ps1`** — точка входа воркера. Читает JSON-запрос из файла, выполняет команду, пишет JSON-ответ в файл. Код разложен по `worker/` (`com.ps1`, `sheet.ps1`, `result.ps1`) и `worker/commands/` (по одной функции `Invoke-<cmd>` на команду). Обмен через файлы снимает проблемы с кодировками кириллицы в PowerShell 5.1.
 - Каждый вызов инструмента порождает **новый** процесс `statist.exe` и закрывает его. Состояние между вызовами не сохраняется (stateless), поэтому изменения на диске требуют явного параметра `save`.
 - Один вызов = один файл `.sta`.
 
@@ -286,9 +286,10 @@ run_analysis {
 
 ## Доработка
 
-- **Новый инструмент:** добавьте объект в массив `TOOLS` в `server.mjs` и ветку в `switch (cmd)` файла `sta.ps1`.
+- **Новый инструмент:** добавьте `{ tools, handlers }` в подходящую группу `src/tools/*.mjs`. Она подключится сама через `src/tools/index.mjs`.
+- **Новая команда воркера:** добавьте функцию `Invoke-<cmd>($app, $ss, $req)` в `worker/commands/*.ps1` — диспетчер найдёт её по имени.
 - **Новый анализ:** обычно достаточно `run_analysis`; пресет нужен только для частого сценария.
-- **Известные enum-константы** перечислены в `ENUMS` (`server.mjs`); их можно дополнить из отчёта.
+- **Известные enum-константы** перечислены в `ENUMS` (`src/modules.mjs`); их можно дополнить из отчёта.
 
 ---
 
@@ -296,8 +297,32 @@ run_analysis {
 
 ```
 statistica/
-  server.mjs                     MCP-сервер, протокол, инструменты
-  sta.ps1                        COM-воркер (файловый обмен)
+  server.mjs                     точка входа MCP-сервера
+  src/
+    constants.mjs                имя, версия, протокол, таймаут
+    log.mjs                      логи в stderr
+    util.mjs                     requirePath
+    protocol.mjs                 JSON-RPC 2.0, stdio, initialize/ping
+    worker.mjs                   запуск sta.ps1 через PowerShell, temp-файлы
+    modules.mjs                  таблицы модулей и enum-констант
+    format.mjs                   форматирование таблиц/результатов
+    analysis.mjs                 обёртка analysis()
+    tools/
+      index.mjs                  сборка инструментов и обработчиков
+      inspect.mjs                info, list, describe, read, describe_analysis
+      edit.mjs                   write, formula, add/rename/delete, sort/select/recode
+      io.mjs                     export_csv, save_spreadsheet, import_data
+      stats.mjs                  описательные, корреляция, регрессия, ANOVA, ТС и др.
+      engine.mjs                 run_analysis
+  sta.ps1                        точка входа COM-воркера
+  worker/
+    com.ps1                      низкоуровневые вызовы COM
+    sheet.ps1                    доступ к листу (чтение/запись переменных)
+    result.ps1                   маршалинг результатов анализа
+    commands/
+      structure.ps1              describe, read, write, sort, select, recode
+      io.ps1                     export_csv, save_as, import
+      analysis.ps1               describe_analysis, analysis
   selftest.mjs                   самопроверка (37 проверок)
   package.json                   зависимостей нет
   reports/
