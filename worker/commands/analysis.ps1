@@ -72,10 +72,21 @@ function Invoke-analysis($app, $ss, $req) {
           }
           else { $list += , $v }
         }
+        # Keep only actual graphs: a spreadsheet result exposes NumberOfCases,
+        # a graph document does not. Without this filter a table/graph pair
+        # (e.g. Autocorrelations) would also export the table and force a
+        # numeric suffix on every output file.
+        $graphs = @()
+        foreach ($item in $list) {
+          $nc = $null
+          try { $nc = comGet $item 'NumberOfCases' @() } catch { $nc = $null }
+          if ($null -eq $nc) { $graphs += , $item }
+        }
+        if ($graphs.Count -eq 0) { $null = $warnings.Add("saveGraph: no graph in '$key'") }
         $idx = 1
-        foreach ($g in $list) {
+        foreach ($g in $graphs) {
           $path = $outPath
-          if ($list.Count -gt 1) {
+          if ($graphs.Count -gt 1) {
             $ext = [System.IO.Path]::GetExtension($outPath)
             $base = $outPath
             if ($ext) { $base = $outPath.Substring(0, $outPath.Length - $ext.Length) }

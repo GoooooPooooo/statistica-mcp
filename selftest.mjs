@@ -29,7 +29,9 @@ const GRAPH_PDF = join(process.env.TEMP, 'sta-selftest-graph.pdf')
 const SHOT = join(process.env.TEMP, 'sta-selftest-shot.png')
 const G3D = join(process.env.TEMP, 'sta-selftest-3d.png')
 const GLINE = join(process.env.TEMP, 'sta-selftest-line.png')
-for (const f of [WORK, WORK2, CSV, CSV2, XLSX, SAVED, IMPORT_CSV, GRAPH_PNG, GRAPH_PDF, SHOT, G3D, GLINE]) rmSync(f, { force: true })
+const ACF_PNG = join(process.env.TEMP, 'sta-selftest-acf.png')
+const ACF_STG = join(process.env.TEMP, 'sta-selftest-acf.stg')
+for (const f of [WORK, WORK2, CSV, CSV2, XLSX, SAVED, IMPORT_CSV, GRAPH_PNG, GRAPH_PDF, SHOT, G3D, GLINE, ACF_PNG, ACF_STG]) rmSync(f, { force: true })
 copyFileSync(SRC, WORK)
 copyFileSync(SRC, WORK2)
 writeFileSync(IMPORT_CSV, 'x;y;label\n1;2.5;a\n2;3.1;b\n3;4.7;c\n', 'utf8')
@@ -154,6 +156,10 @@ await check(
 
 // --- time series ----------------------------------------------------------
 await check('time series: autocorrelation', 'statistica_time_series', { path: WORK, procedure: 'autocorrelation', variables: [2], lags: 6 }, { mustInclude: 'Autocorrelations' })
+await check('time series: autocorrelation graph -> png', 'statistica_time_series', { path: WORK, procedure: 'autocorrelation', variables: [2], lags: 6, out: ACF_PNG }, { mustInclude: 'saved graphs' })
+console.log(`      acf png on disk: ${existsSync(ACF_PNG)} (${existsSync(ACF_PNG) ? readFileSync(ACF_PNG).length : 0} bytes)`)
+await check('time series: autocorrelation graph -> .stg', 'statistica_time_series', { path: WORK, procedure: 'autocorrelation', variables: [2], lags: 6, out: ACF_STG }, { mustInclude: 'saved graphs' })
+console.log(`      acf stg on disk: ${existsSync(ACF_STG)} (${existsSync(ACF_STG) ? readFileSync(ACF_STG).length : 0} bytes)`)
 await check(
   'time series: arima',
   'statistica_time_series',
@@ -226,5 +232,5 @@ if (failures.length) {
 }
 
 p.stdin.end()
-for (const f of [WORK, WORK2, CSV, CSV2, XLSX, SAVED, IMPORT_CSV, GRAPH_PNG, GRAPH_PDF, SHOT, G3D, GLINE]) rmSync(f, { force: true })
+for (const f of [WORK, WORK2, CSV, CSV2, XLSX, SAVED, IMPORT_CSV, GRAPH_PNG, GRAPH_PDF, SHOT, G3D, GLINE, ACF_PNG, ACF_STG]) rmSync(f, { force: true })
 process.exit(fail > 0 ? 1 : 0)

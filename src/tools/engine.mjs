@@ -9,7 +9,7 @@ const tools = [
       '{"call": "MethodName", "args": [...]} (invoke a dialog method, e.g. ARIMAAndAutocorrelationFunctions), ' +
       '{"run": true} (execute the analysis), ' +
       '{"result": "Summary"} (read a result document/table after the run), ' +
-      '{"saveGraph": "C:\\\\out\\\\plot.png", "result": "Graphs"} (export a graph document to an image; .png/.jpg/.emf). ' +
+      '{"saveGraph": "C:\\\\out\\\\plot.png", "result": "Graphs"} (export a graph document to an image or a native STATISTICA graph; .png/.jpg/.emf/.stg). ' +
       'Results are returned as tables, arrays or document handles. Use describe_analysis to discover property and method names.',
     inputSchema: {
       type: 'object',

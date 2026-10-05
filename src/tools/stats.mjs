@@ -147,7 +147,7 @@ const tools = [
         module: { type: ['string', 'integer'], description: 'Graph module id (see list_analysis_modules / AnalysisIdentifier).' },
         variables: { type: 'string', description: 'Variable list for the graph, e.g. "2 | 11".' },
         properties: { type: 'object', description: 'Extra dialog properties to set before building the graph.', additionalProperties: true },
-        out: { type: 'string', description: 'Optional image path (.png/.jpg/.emf); parent folders are created.' },
+        out: { type: 'string', description: 'Optional path to export the graph to: an image (.png/.jpg/.emf) or a native STATISTICA graph (.stg); parent folders are created.' },
       },
       required: ['path', 'module', 'variables'],
       additionalProperties: false,
@@ -194,6 +194,7 @@ const tools = [
         smaOrder: { type: 'integer', minimum: 0, description: 'arima: seasonal MA order.' },
         forecasts: { type: 'integer', minimum: 1, description: 'arima: cases to forecast. Default 12.' },
         confidenceLevel: { type: 'number', description: 'arima: forecast confidence level. Default 0.95.' },
+        out: { type: 'string', description: 'Optional path to export the result graph to: an image (.png/.jpg/.emf) or a native STATISTICA graph (.stg).' },
       },
       required: ['path', 'procedure', 'variables'],
       additionalProperties: false,
@@ -645,6 +646,13 @@ const handlers = {
         ]
         break
       }
+    }
+    if (a.out) {
+      const graphKey = (proc === 'autocorrelation' || proc === 'partial_autocorrelation') ? 'Autocorrelations' : 'Graphs'
+      const step = { saveGraph: a.out, result: graphKey }
+      const firstResult = steps.findIndex((s) => s && Object.prototype.hasOwnProperty.call(s, 'result'))
+      if (firstResult === -1) steps.push(step)
+      else steps.splice(firstResult, 0, step)
     }
     return analysis(a, 1901, steps)
   },
