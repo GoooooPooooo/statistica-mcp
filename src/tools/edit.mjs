@@ -59,7 +59,7 @@ const tools = [
         sheet: { type: ['string', 'integer'] },
         name: { type: 'string', description: 'Short name for the new variable(s).' },
         longName: { type: 'string', description: 'Long/description name.' },
-        after: { type: 'integer', minimum: 0, description: 'Insert after this 1-based variable index. 0 appends at the end.' },
+        after: { type: 'integer', minimum: 0, description: 'Insert after this 1-based variable index (0 — before the first variable). Omit to append at the end.' },
         count: { type: 'integer', minimum: 1, description: 'How many variables to add. Default 1.' },
         type: { type: 'integer', enum: [0, 1, 2, 3], description: 'Variable type. Default 0 (numeric).' },
         typeLength: { type: 'integer', description: 'Declared length for text variables.' },

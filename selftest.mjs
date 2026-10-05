@@ -182,6 +182,8 @@ const col = Array.from({ length: nCases }, (_, i) => i * 1.5)
 await check('write the new variable (by index)', 'write_variables', { path: WORK, columns: [{ index: 1, values: col }] })
 await check('rename it', 'rename_variables', { path: WORK, renames: { 1: 'SELFTEST_DONE' } })
 await check('resize', 'set_size', { path: WORK, variables: 18 })
+await check('add variable without `after` (appends at end)', 'add_variables', { path: WORK, name: 'APPENDED_VAR', count: 1, type: 0 }, { mustInclude: 'variables' })
+await check('rename several variables at once', 'rename_variables', { path: WORK, renames: { 2: 'REN_A', 3: 'REN_B', 4: 'REN_C' } }, { mustInclude: 'Renamed 3' })
 await check('regression (dependent on SERIES_G)', 'statistica_regression', { path: WORK, dependent: 2, predictors: [1] }, { mustInclude: 'Coefficients' })
 
 // --- io -------------------------------------------------------------------

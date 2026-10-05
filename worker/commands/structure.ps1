@@ -102,10 +102,10 @@ function Invoke-add_variables($app, $ss, $req) {
   $count = 1
   if ($null -ne $req.count) { $count = [int]$req.count }
   if ($count -lt 1) { throw 'count must be >= 1' }
-  $after = 0
-  if ($null -ne $req.after) { $after = [int]$req.after }
+  $nv = [int]$ss.NumberOfVariables
+  if ($null -eq $req.after -or "$($req.after)" -eq '') { $after = $nv } else { $after = [int]$req.after }
   if ($after -lt 0) { $after = 0 }
-  if ($after -gt [int]$ss.NumberOfVariables) { $after = [int]$ss.NumberOfVariables }
+  if ($after -gt $nv) { $after = $nv }
   $null = comCall $ss 'AddVariables' @($name, $after, $count)
   $added = [object[]]::new($count)
   $j = 0
@@ -130,9 +130,10 @@ function Invoke-add_variables($app, $ss, $req) {
 
 function Invoke-rename($app, $ss, $req) {
   if (-not $req.renames) { throw 'renames is required' }
-  $done = [object[]]::new(@($req.renames).Count)
+  $props = @($req.renames.PSObject.Properties)
+  $done = [object[]]::new($props.Count)
   $i = 0
-  foreach ($prop in $req.renames.PSObject.Properties) {
+  foreach ($prop in $props) {
     $idx = Get-VarIndex $ss $prop.Name
     $null = comSet $ss 'VariableName' @($idx, [string]$prop.Value)
     $done[$i] = @{ index = $idx; from = $prop.Name; to = [string]$prop.Value }
