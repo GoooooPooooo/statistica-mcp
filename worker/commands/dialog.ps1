@@ -72,6 +72,13 @@ function Invoke-dialog($app, $ss, $req) {
     }
   }
   if ($req.run) { try { $null = comCall $ana 'Run' @() } catch { } }
+  if ($req.call) {
+    try {
+      $cargs = @()
+      if ($null -ne $req.args) { $cargs = @($req.args) }
+      $null = comCall $ana.Dialog ([string]$req.call) $cargs
+    } catch { }
+  }
   Start-Sleep -Milliseconds 1200
 
   $procId = [uint32]([int]$app.ProcessID)
