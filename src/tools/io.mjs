@@ -115,6 +115,24 @@ const tools = [
       additionalProperties: false,
     },
   },
+  {
+    name: 'combine_images',
+    description:
+      'Combine several PNG images into one file: stack them vertically (default) or lay them horizontally, ' +
+      'scaling each to a common width/height and adding a gap. Useful for two-panel report figures ' +
+      '(e.g. series+model on top, residuals below).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        images: { type: 'array', items: { type: 'string' }, description: 'Ordered list of PNG paths.' },
+        out: { type: 'string', description: 'Destination PNG path. Required.' },
+        direction: { type: 'string', enum: ['vertical', 'horizontal'], description: 'Stacking direction. Default vertical.' },
+        gap: { type: 'integer', minimum: 0, description: 'Gap in pixels between images. Default 16.' },
+      },
+      required: ['images', 'out'],
+      additionalProperties: false,
+    },
+  },
 ]
 
 const handlers = {
@@ -189,6 +207,11 @@ const handlers = {
     if (r.opened) lines.push(`Opened ${a.path} (sheet ${r.sheetName}, index ${r.sheetIndex})`)
     lines.push('Use attach:true with other tools to edit/graph this window live.')
     return lines.join('\n')
+  },
+
+  async combine_images(a) {
+    const r = await runWorker({ cmd: 'combine_images', images: a.images, out: a.out, direction: a.direction, gap: a.gap })
+    return `Combined ${r.count} image(s) -> ${r.out} (${r.bytes} bytes, ${r.direction})`
   },
 }
 

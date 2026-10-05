@@ -31,7 +31,8 @@ const G3D = join(process.env.TEMP, 'sta-selftest-3d.png')
 const GLINE = join(process.env.TEMP, 'sta-selftest-line.png')
 const ACF_PNG = join(process.env.TEMP, 'sta-selftest-acf.png')
 const ACF_STG = join(process.env.TEMP, 'sta-selftest-acf.stg')
-for (const f of [WORK, WORK2, CSV, CSV2, XLSX, SAVED, IMPORT_CSV, GRAPH_PNG, GRAPH_PDF, SHOT, G3D, GLINE, ACF_PNG, ACF_STG]) rmSync(f, { force: true })
+const COMBINED = join(process.env.TEMP, 'sta-selftest-combined.png')
+for (const f of [WORK, WORK2, CSV, CSV2, XLSX, SAVED, IMPORT_CSV, GRAPH_PNG, GRAPH_PDF, SHOT, G3D, GLINE, ACF_PNG, ACF_STG, COMBINED]) rmSync(f, { force: true })
 copyFileSync(SRC, WORK)
 copyFileSync(SRC, WORK2)
 writeFileSync(IMPORT_CSV, 'x;y;label\n1;2.5;a\n2;3.1;b\n3;4.7;c\n', 'utf8')
@@ -226,6 +227,8 @@ await check('3D surface graph', 'statistica_graph', { path: WORK, module: 11021,
 await check('multi-line graph', 'statistica_graph', { path: WORK, module: 11012, variables: '2 3', properties: { GraphType: 1 }, out: GLINE }, { mustInclude: 'saved graphs' })
 console.log(`      3d on disk: ${existsSync(G3D)} (${existsSync(G3D) ? readFileSync(G3D).length : 0} bytes)`)
 console.log(`      line on disk: ${existsSync(GLINE)} (${existsSync(GLINE) ? readFileSync(GLINE).length : 0} bytes)`)
+await check('combine images (vertical)', 'combine_images', { images: [GRAPH_PNG, GLINE], out: COMBINED, direction: 'vertical' }, { mustInclude: 'Combined' })
+console.log(`      combined on disk: ${existsSync(COMBINED)} (${existsSync(COMBINED) ? readFileSync(COMBINED).length : 0} bytes)`)
 
 console.log(`\n${'='.repeat(60)}\nresult: ${pass} passed, ${fail} failed\n${'='.repeat(60)}`)
 if (failures.length) {
@@ -234,5 +237,5 @@ if (failures.length) {
 }
 
 p.stdin.end()
-for (const f of [WORK, WORK2, CSV, CSV2, XLSX, SAVED, IMPORT_CSV, GRAPH_PNG, GRAPH_PDF, SHOT, G3D, GLINE, ACF_PNG, ACF_STG]) rmSync(f, { force: true })
+for (const f of [WORK, WORK2, CSV, CSV2, XLSX, SAVED, IMPORT_CSV, GRAPH_PNG, GRAPH_PDF, SHOT, G3D, GLINE, ACF_PNG, ACF_STG, COMBINED]) rmSync(f, { force: true })
 process.exit(fail > 0 ? 1 : 0)

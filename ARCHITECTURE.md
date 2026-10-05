@@ -71,7 +71,8 @@ graph LR
   - `analysis.ps1` — describe_analysis, analysis;
   - `macro.ps1` — run_macro (SVB);
   - `open.ps1` — statistica_open (постоянное окно);
-  - `dialog.ps1` — statistica_dialog (снимок панелей анализа).
+  - `dialog.ps1` — statistica_dialog (снимок панелей анализа, с `call`);
+  - `image.ps1` — combine_images (склейка изображений, без STATISTICA).
 
 ---
 

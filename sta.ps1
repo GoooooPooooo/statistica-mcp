@@ -28,6 +28,7 @@ $CB = [Microsoft.VisualBasic.CallType]
 . (Join-Path $PSScriptRoot 'worker\commands\macro.ps1')
 . (Join-Path $PSScriptRoot 'worker\commands\open.ps1')
 . (Join-Path $PSScriptRoot 'worker\commands\dialog.ps1')
+. (Join-Path $PSScriptRoot 'worker\commands\image.ps1')
 . (Join-Path $PSScriptRoot 'worker\screenshot.ps1')
 
 # --- request handling -----------------------------------------------------
@@ -42,7 +43,12 @@ try {
   if ($req.attach) { $attached = $true }
   if ($cmd -eq 'open') { $keepAlive = $true }
 
-  if ($cmd -eq 'info') {
+  if ($cmd -eq 'combine_images') {
+    # Pure image operation: no STATISTICA instance is needed.
+    $result = Invoke-combine_images $req
+    $out = @{ ok = $true; result = $result }
+  }
+  elseif ($cmd -eq 'info') {
     $result = @{ ok = $true; cmd = $cmd }
     $app = New-ComApp $attached
     if (-not $attached) {
