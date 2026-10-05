@@ -94,6 +94,20 @@ function Wait-File($path) {
   return 0
 }
 
+# Replace $sv with the temporary file $tmp, retrying while the target is locked
+# (STATISTICA keeps its own file open until the document/app is closed).
+function Replace-File($tmp, $sv) {
+  for ($t = 0; $t -lt 30; $t++) {
+    try {
+      if (Test-Path -LiteralPath $sv) { Remove-Item -LiteralPath $sv -Force }
+      Move-Item -LiteralPath $tmp -Destination $sv -Force
+      return $true
+    }
+    catch { Start-Sleep -Milliseconds 300 }
+  }
+  return $false
+}
+
 function Num($v) {
   if ($null -eq $v) { return $null }
   if ($v -is [string]) {

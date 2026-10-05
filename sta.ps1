@@ -35,6 +35,7 @@ $app = $null
 $result = $null
 $attached = $false
 $keepAlive = $false
+$script:pendingSave = $null
 try {
   $req = [System.IO.File]::ReadAllText($RequestFile, [System.Text.Encoding]::UTF8) | ConvertFrom-Json
   $cmd = [string]$req.cmd
@@ -111,9 +112,23 @@ try {
     else { throw "unknown command: $cmd" }
 
     if ($req.save -and $cmd -notin @('export_csv', 'save_as', 'import')) {
+      # Save to a temporary file first, then replace the target. This avoids the
+      # "file is used by another process" error when the target is the very file
+      # the worker (or a lingering instance) has open: the copy is written to a
+      # different path, and the replacement happens after the document is closed.
       $sv = [string]$req.save
-      if (Test-Path -LiteralPath $sv) { Remove-Item -LiteralPath $sv -Force }
-      $null = comCall $ss 'SaveCopyAs' @($sv, $true)
+      $dir = [System.IO.Path]::GetDirectoryName($sv)
+      if ($dir -and -not (Test-Path -LiteralPath $dir)) { $null = New-Item -ItemType Directory -Path $dir -Force }
+      $ext = [System.IO.Path]::GetExtension($sv)
+      $tmp = [System.IO.Path]::Combine($dir, [System.IO.Path]::GetFileNameWithoutExtension($sv) + '.__savetmp' + $ext)
+      if (Test-Path -LiteralPath $tmp) { Remove-Item -LiteralPath $tmp -Force }
+      $null = comCall $ss 'SaveCopyAs' @($tmp, $true)
+      if ($attached) {
+        $ok = Replace-File $tmp $sv
+        if (-not $ok) { throw "could not replace $sv (file is locked)" }
+      } else {
+        $script:pendingSave = @{ tmp = $tmp; sv = $sv }
+      }
       $result.saved = $sv
     }
 
@@ -131,6 +146,7 @@ catch {
 finally {
   if ($null -ne $app -and -not $attached -and -not $keepAlive) {
     try { Close-AllDocuments $app } catch { }
+    if ($null -ne $script:pendingSave) { $null = Replace-File $script:pendingSave.tmp $script:pendingSave.sv }
     try { $app.Quit() } catch { }
   }
 }
