@@ -124,7 +124,7 @@ graph LR
 
 | Инструмент | Назначение |
 |---|---|
-| `statistica_info` | Доступность COM, версия, путь к `statist.exe`, PID. Вызывайте первым при сбоях. |
+| `info` | Доступность COM, версия, путь к `statist.exe`, PID. Вызывайте первым при сбоях. |
 | `list_analysis_modules` | Список всех модулей анализа (id + имя) для `run_analysis`. |
 | `describe_spreadsheet` | Открыть `.sta`/`.stw`: размер, список переменных (индекс, короткое/чистое/длинное имя, тип, уровень измерения, код пропуска). |
 | `list_sheets` | Список листов файла (индекс, имя, размер) без загрузки данных. |
@@ -145,16 +145,16 @@ graph LR
 | `export_csv` | Экспорт листа штатным CSV-писателем. |
 | `save_spreadsheet` | Сохранение листа в новый файл (`.sta`, `.stw`, `.csv`, `.xlsx`). |
 | `combine_images` | Склейка нескольких PNG в один файл (вертикально/горизонтально) — двухпанельные рисунки для отчётов. |
-| `statistica_graph` | Построение графика (`module` + `variables`) и экспорт в изображение или `.stg` (`out`): `.png`/`.jpg`/`.emf`/`.stg`. Через `properties.GraphType`: `1` у 11012 — один график с несколькими линиями, `6` у 11021 — 3D Surface. |
-| `statistica_screenshot` | Показать окно STATISTICA и снять экран для отчёта (`mode`: `screen` — весь экран по умолчанию, `window` — окно приложения, `document` — активная таблица/график). |
-| `statistica_open` | Запустить или переиспользовать видимое окно STATISTICA (с опциональным файлом) и оставить его открытым — для работы через `attach` без перезапуска приложения. |
-| `statistica_dialog` | Открыть диалог модуля анализа и снять саму панель пакета (Time Series/Forecasting, Transformations и др.); `run:true` — панель второго уровня, `mode:screen` — полный экран. Приложение не закрывается. |
+| `graph` | Построение графика (`module` + `variables`) и экспорт в изображение или `.stg` (`out`): `.png`/`.jpg`/`.emf`/`.stg`. Через `properties.GraphType`: `1` у 11012 — один график с несколькими линиями, `6` у 11021 — 3D Surface. |
+| `screenshot` | Показать окно STATISTICA и снять экран для отчёта (`mode`: `screen` — весь экран по умолчанию, `window` — окно приложения, `document` — активная таблица/график). |
+| `open` | Запустить или переиспользовать видимое окно STATISTICA (с опциональным файлом) и оставить его открытым — для работы через `attach` без перезапуска приложения. |
+| `dialog` | Открыть диалог модуля анализа и снять саму панель пакета (Time Series/Forecasting, Transformations и др.); `run:true` — панель второго уровня, `mode:screen` — полный экран. Приложение не закрывается. |
 
 ### Режим «вживую» (`attach`)
 
 Любой инструмент данных/анализа принимает `attach: true`. В этом режиме worker не создаёт новый процесс, а подключается к **уже открытому** окну STATISTICA (`Marshal.GetActiveObject`), правит его активный лист и **не закрывает** программу. Так значения и формулы видны и обновляются прямо в открытом документе. Если `path` не указан — берётся активный лист (в `attach`-режиме путь необязателен).
 
-Чтобы не запускать окно вручную, используйте `statistica_open` — он запускает (или переиспользует уже открытый) видимый экземпляр, открывает файл и оставляет его открытым. `GetActiveObject` при нескольких копиях возвращает один экземпляр (первый), поэтому `statistica_open` переиспользует запущенный, чтобы `attach` попадал в то же окно.
+Чтобы не запускать окно вручную, используйте `open` — он запускает (или переиспользует уже открытый) видимый экземпляр, открывает файл и оставляет его открытым. `GetActiveObject` при нескольких копиях возвращает один экземпляр (первый), поэтому `open` переиспользует запущенный, чтобы `attach` попадал в то же окно.
 
 ```
 set_formula { "path": "...\\LAB3.sta", "variable": "TS_Prod", "formula": "v9*v10", "attach": true }
@@ -166,21 +166,21 @@ write_variables { "path": "...\\LAB3.sta", "columns": [{"index": 5, "values": [ 
 | Инструмент | Модуль / механизм |
 |---|---|
 | `descriptives` | Быстрый расчёт в Node по данным из COM (N, missing, mean, sd, se, min, q1, median, q3, max, sum). |
-| `statistica_descriptives` | Описательные статистики **движком** Basic Statistics (включая квантили, асимметрию, эксцесс). |
-| `statistica_normality` | Проверка нормальности (Basic Statistics): описательные статистики + Шапиро–Уилк и Колмогоров–Смирнов/Лилиефорс + гистограмма. |
-| `statistica_correlation` | Матрица корреляций Пирсона. |
-| `statistica_frequencies` | Частотные таблицы и гистограммы. |
-| `statistica_t_test` | t-тесты: `single` (к константе) и `dependent` (парные). |
-| `statistica_regression` | Множественная регрессия (модуль GRM). |
-| `statistica_anova` | Дисперсионный анализ / GLM (модуль 4100): таблица ANOVA (`UnivariateResults`) и оценки параметров. |
-| `statistica_cluster` | Иерархический кластерный анализ (модуль 2201): расписание объединений, матрица расстояний, описательные статистики. |
-| `statistica_factor` | Факторный анализ / метод главных компонент (модуль 2101): собственные значения, нагрузки, общности. |
-| `statistica_correlation_matrix` | Строит лаговые произведения ряда (`Lag1..LagK` = `x(t)*x(t-L)`, опц. SMA) или сдвинутые ряды (`mode:"shift"`). |
+| `descriptives_engine` | Описательные статистики **движком** Basic Statistics (включая квантили, асимметрию, эксцесс). |
+| `normality` | Проверка нормальности (Basic Statistics): описательные статистики + Шапиро–Уилк и Колмогоров–Смирнов/Лилиефорс + гистограмма. |
+| `correlation` | Матрица корреляций Пирсона. |
+| `frequencies` | Частотные таблицы и гистограммы. |
+| `t_test` | t-тесты: `single` (к константе) и `dependent` (парные). |
+| `regression` | Множественная регрессия (модуль GRM). |
+| `anova` | Дисперсионный анализ / GLM (модуль 4100): таблица ANOVA (`UnivariateResults`) и оценки параметров. |
+| `cluster` | Иерархический кластерный анализ (модуль 2201): расписание объединений, матрица расстояний, описательные статистики. |
+| `factor` | Факторный анализ / метод главных компонент (модуль 2101): собственные значения, нагрузки, общности. |
+| `correlation_matrix` | Строит лаговые произведения ряда (`Lag1..LagK` = `x(t)*x(t-L)`, опц. SMA) или сдвинутые ряды (`mode:"shift"`). |
 | `add_lag_column` | Считает оценку на одном лаге (`x(t)*x(t-lag)` или сдвиг) и дописывает **одну** колонку `Lag_m` в целевой лист — для пошагового построения матрицы. |
-| `statistica_time_series` | Временные ряды: `descriptives`, `autocorrelation`, `partial_autocorrelation`, `cross_correlation`, `arima`, `spectral`, `smoothing` (центрир. MA), `shift`, `exponential_smoothing` (модели `simple`, `holt`, `holt_additive` (Тейл–Вейдж), `holt_multiplicative` (Уинтерс), `damped`, `exponential_trend`), `differencing`, `seasonal_decomposition`. Параметр `out` экспортирует график результата (например, АКФ/ЧАКФ) в изображение или `.stg`. |
+| `time_series` | Временные ряды: `descriptives`, `autocorrelation`, `partial_autocorrelation`, `cross_correlation`, `arima`, `spectral`, `smoothing` (центрир. MA), `shift`, `exponential_smoothing` (модели `simple`, `holt`, `holt_additive` (Тейл–Вейдж), `holt_multiplicative` (Уинтерс), `damped`, `exponential_trend`), `differencing`, `seasonal_decomposition`. Параметр `out` экспортирует график результата (например, АКФ/ЧАКФ) в изображение или `.stg`. |
 | `add_fit_line` | МНК-аппроксимация `y` по `x` (по умолчанию по номеру наблюдения), степень `degree` (1..6) — пишет fitted-значения новой переменной (замена интерактивного fit на графике). |
 | `run_macro` | Выполнить код STATISTICA BASIC (SVB) или `.svb`-файл, где `ActiveSpreadsheet` — открытый лист (для рекуррентных моделей DWLS/Lowess/EWPR из ЛР6–8). |
-| `statistica_graph` | График и его экспорт в изображение (`.png`/`.jpg`/`.emf`) или `.stg`; `.pdf` собирается встроенным конвертером PNG→PDF. |
+| `graph` | График и его экспорт в изображение (`.png`/`.jpg`/`.emf`) или `.stg`; `.pdf` собирается встроенным конвертером PNG→PDF. |
 
 ### Универсальный движок
 
@@ -223,20 +223,20 @@ write_variables { "path": "...\\LAB3.sta", "columns": [{"index": 5, "values": [ 
 **Описательные и корреляция**
 
 ```
-statistica_descriptives { "path": "...\\LAB3.sta", "variables": [2, 3, 4] }
-statistica_correlation   { "path": "...\\LAB3.sta", "variables": [2, 3, 5] }
+descriptives_engine { "path": "...\\LAB3.sta", "variables": [2, 3, 4] }
+correlation   { "path": "...\\LAB3.sta", "variables": [2, 3, 5] }
 ```
 
 **Параметрическая регрессия**
 
 ```
-statistica_regression { "path": "...\\LAB3.sta", "dependent": 2, "predictors": [1] }
+regression { "path": "...\\LAB3.sta", "dependent": 2, "predictors": [1] }
 ```
 
 **ARIMA с прогнозом**
 
 ```
-statistica_time_series {
+time_series {
   "path": "...\\LAB3.sta", "procedure": "arima", "variables": [2],
   "arOrder": 1, "maOrder": 0, "difference": true, "forecasts": 12
 }
@@ -245,22 +245,22 @@ statistica_time_series {
 **Сглаживание и спектр**
 
 ```
-statistica_time_series { "path": "...", "procedure": "smoothing", "variables": [2], "window": 3 }
-statistica_time_series { "path": "...", "procedure": "spectral",  "variables": [2] }
+time_series { "path": "...", "procedure": "smoothing", "variables": [2], "window": 3 }
+time_series { "path": "...", "procedure": "spectral",  "variables": [2] }
 ```
 
 **Формула и корреляционное произведение**
 
 ```
 set_formula { "path": "...\\LAB3.sta", "variable": 19, "formula": "v9*v10" }
-statistica_correlation_matrix { "path": "...\\LAB3.sta", "variable": "TS_Nrm", "lags": 12, "smooth": 3 }
+correlation_matrix { "path": "...\\LAB3.sta", "variable": "TS_Nrm", "lags": 12, "smooth": 3 }
 ```
 
 **ANOVA и факторный анализ**
 
 ```
-statistica_anova  { "path": "...\\LAB3.sta", "dependent": 2, "between": [1, 3] }
-statistica_factor { "path": "...\\LAB3.sta", "variables": [2, 3, 4], "method": "principal_components", "factors": 2 }
+anova  { "path": "...\\LAB3.sta", "dependent": 2, "between": [1, 3] }
+factor { "path": "...\\LAB3.sta", "variables": [2, 3, 4], "method": "principal_components", "factors": 2 }
 ```
 
 **Правка данных**
@@ -275,7 +275,7 @@ recode      { "path": "...\\LAB2.sta", "variable": 1, "map": { "1": 10, "2": 20 
 **График в файл (2D-диаграмма рассеяния)**
 
 ```
-statistica_graph {
+graph {
   "path": "...\\LAB3.sta", "module": 11003, "variables": "2 | 11",
   "properties": { "GraphType": 0 }, "out": "C:\\...\\reports\\scatter.png"
 }
@@ -314,7 +314,7 @@ run_analysis {
 - **Live-режим.** `Marshal.GetActiveObject('STATISTICA.Application')` есть в PowerShell 5.1 (нет в PowerShell 7); в режиме `attach` программа не закрывается.
 - **Модальные окна.** В headless-режиме воркер ставит `Application.DisplayAlert = $false`, экспортирует таблицы через `ExportTextEx`/`ExportXLS` (без окон «features will be lost»/«Save As Text File») и перед выходом закрывает все документы `Close($false)`, поэтому окно «Save changes to Workbook1?» не блокирует `Quit`.
 - **PDF.** `Graph.SaveAsPDF`/`SaveAsFormat(PDF)` возвращают `False`; PDF собирается встроенным конвертером PNG→PDF (граф экспортируется в PNG, затем оборачивается в PDF).
-- **Скриншоты.** `statistica_screenshot` показывает окно (`Visible=$true`) и снимает пиксели через `Graphics.CopyFromScreen`: `PrintWindow` не отрисовывает дочерние MDI-окна (таблицу/график), поэтому по умолчанию (`mode=screen`) снимается весь виртуальный экран (все мониторы) — обрезать можно вручную (`window` — окно приложения, `document` — только активная таблица/график). Свёрнутое окно восстанавливается (`ShowWindow`) и принудительно выводится на передний план (`AppActivate`/`SwitchToThisWindow`/`SetForegroundWindow`); если не удалось — ответ содержит предупреждение. Воркер объявляет себя DPI-aware (`SetProcessDPIAware`): без этого Windows виртуализирует экран (2560×1359 вместо 5120×2718) и кадр обрезается.
+- **Скриншоты.** `screenshot` показывает окно (`Visible=$true`) и снимает пиксели через `Graphics.CopyFromScreen`: `PrintWindow` не отрисовывает дочерние MDI-окна (таблицу/график), поэтому по умолчанию (`mode=screen`) снимается весь виртуальный экран (все мониторы) — обрезать можно вручную (`window` — окно приложения, `document` — только активная таблица/график). Свёрнутое окно восстанавливается (`ShowWindow`) и принудительно выводится на передний план (`AppActivate`/`SwitchToThisWindow`/`SetForegroundWindow`); если не удалось — ответ содержит предупреждение. Воркер объявляет себя DPI-aware (`SetProcessDPIAware`): без этого Windows виртуализирует экран (2560×1359 вместо 5120×2718) и кадр обрезается.
 - **Методы с `out`-параметрами** (`Statistics`, `ColumnStats`) через `CallByName` не работают, поэтому часть описательных статистик считает Node.
 
 ---
@@ -370,8 +370,8 @@ statistica/
       io.ps1                     export_csv, save_as, import (ExportTextEx/ExportXLS)
       analysis.ps1               describe_analysis, analysis
       macro.ps1                  run_macro (SVB, ActiveSpreadsheet)
-      open.ps1                   statistica_open (постоянное окно)
-      dialog.ps1                 statistica_dialog (снимок панелей анализа)
+      open.ps1                   open (постоянное окно)
+      dialog.ps1                 dialog (снимок панелей анализа)
   ARCHITECTURE.md                схема устройства (Mermaid)
   selftest.mjs                   самопроверка (53 проверки)
   scripts/

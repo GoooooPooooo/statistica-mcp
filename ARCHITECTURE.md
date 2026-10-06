@@ -70,8 +70,8 @@ graph LR
   - `io.ps1` — export_csv, save_as, import;
   - `analysis.ps1` — describe_analysis, analysis;
   - `macro.ps1` — run_macro (SVB);
-  - `open.ps1` — statistica_open (постоянное окно);
-  - `dialog.ps1` — statistica_dialog (снимок панелей анализа, с `call`);
+  - `open.ps1` — open (постоянное окно);
+  - `dialog.ps1` — dialog (снимок панелей анализа, с `call`);
   - `image.ps1` — combine_images (склейка изображений, без STATISTICA).
 
 ---
@@ -100,7 +100,7 @@ graph LR
     X1["каждый вызов"] --> X2["новый statist.exe"] --> X3["Quit после ответа"]
   end
   subgraph Attach["attach / постоянное окно"]
-    Y1["statistica_open"] --> Y2["GetActiveObject"] --> Y3["правки в открытом окне<br/>без Quit"]
+    Y1["open"] --> Y2["GetActiveObject"] --> Y3["правки в открытом окне<br/>без Quit"]
   end
 ```
 
@@ -109,7 +109,7 @@ graph LR
 | Процесс | новый `statist.exe` на каждый вызов | подключается к открытому окну |
 | Закрытие | `Quit` после ответа | программа не закрывается |
 | Сохранение | только с явным `save` | правки видны в окне «вживую» |
-| Окно | скрытое | видимое (`statistica_open`) |
+| Окно | скрытое | видимое (`open`) |
 | Когда использовать | пакетные расчёты | ручной ввод, живые правки, снимки панелей |
 
 ---
@@ -142,7 +142,7 @@ graph LR
   результата-массива (таблица + граф) сохраняются только граф-документы: у
   таблицы есть `NumberOfCases`, у графа — нет.
 - Диалог модуля создаётся скрытым окном класса `#32770`; его можно показать и
-  снять (`statistica_dialog`).
+  снять (`dialog`).
 - В headless-режиме: `DisplayAlert=$false`, экспорт через
   `ExportTextEx`/`ExportXLS`, закрытие документов `Close($false)`.
 

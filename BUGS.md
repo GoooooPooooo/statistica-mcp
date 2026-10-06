@@ -47,9 +47,9 @@
 
 | ID | Инструмент | Проблема | Причина | Исправление | Коммит |
 |---|---|---|---|---|---|
-| B-7 | `statistica_time_series` | `TypeOfTransformation` падал (`Access Violation`), сглаживание не применялось | Сеттер ждёт индекс без флага `0x40000000` | Передавать `константа − 0x40000000` | `408daea` |
-| B-8 | `statistica_regression` | Регрессия не отдавала результаты через модуль 1701 | Многошаговый «мастер»; `.Summary` недоступен | Переход на модуль GRM (4601): `.Coefficients`, `.UnivariateResults` | `408daea` |
-| B-9 | `statistica_regression` | Задавалось несуществующее свойство `RegressionStandard` | Неверное имя флага | Флаги только для не-`standard` методов | `408daea` |
+| B-7 | `time_series` | `TypeOfTransformation` падал (`Access Violation`), сглаживание не применялось | Сеттер ждёт индекс без флага `0x40000000` | Передавать `константа − 0x40000000` | `408daea` |
+| B-8 | `regression` | Регрессия не отдавала результаты через модуль 1701 | Многошаговый «мастер»; `.Summary` недоступен | Переход на модуль GRM (4601): `.Coefficients`, `.UnivariateResults` | `408daea` |
+| B-9 | `regression` | Задавалось несуществующее свойство `RegressionStandard` | Неверное имя флага | Флаги только для не-`standard` методов | `408daea` |
 | B-10 | `rename_variables` | Числовые ключи JSON (`"1"`) не принимались | Ключ трактовался как имя | Строка `^\d+$` → индекс | `352e2a5` |
 | B-11 | `run_analysis` | `set` на каждом свойстве пересоздавал диалог | `$ana.Dialog` вызывался в цикле | Диалог кэшируется один раз на шаг | `352e2a5` |
 
@@ -62,7 +62,7 @@
 | B-12 | `rename_variables` | Падало («индекс вне границ») на нескольких записях | `@($req.renames).Count` даёт 1 для объекта-словаря | Считать число `PSObject.Properties` |
 | B-13 | `add_variables` | Без `after` вставлял столбцы в начало | `after=0` = вставка перед первой переменной | Без `after` — в конец; `after=0` — явно в начало |
 | B-14 | `save` (правки структуры) | «Файл используется другим процессом» при сохранении в исходный путь | STATISTICA держит свой файл открытым | Сохранение во временный файл + замена после закрытия (`Replace-File`) |
-| B-15 | `statistica_dialog` | Нельзя снять вложенную панель (напр. диалог ES) | Не было способа вызвать метод диалога | Параметр `call` (+ `args`) |
+| B-15 | `dialog` | Нельзя снять вложенную панель (напр. диалог ES) | Не было способа вызвать метод диалога | Параметр `call` (+ `args`) |
 
 ---
 
@@ -87,7 +87,7 @@
 | Повтор COM | `New-ComApp` (3 попытки) | Зависший экземпляр даёт разовый `E_FAIL`; создание повторяется. |
 | DPI-awareness | `SetProcessDPIAware` в начале воркера | Без него `Screen.Bounds`/`CopyFromScreen` давали 2560×1359 вместо 5120×2718 — кадр обрезался. |
 | Активация окна | `ShowWindow` (restore+maximize), `AppActivate`, `SwitchToThisWindow` | `SetForegroundWindow` игнорируется для свёрнутого окна; снимок — весь `VirtualScreen`, ответ предупреждает, если фокус не получен. |
-| Запаздывание ряда | `ShiftSeriesForward` + `LagForShiftingSeriesForward` | `statistica_time_series procedure=shift` (есть и `direction=back`). |
+| Запаздывание ряда | `ShiftSeriesForward` + `LagForShiftingSeriesForward` | `time_series procedure=shift` (есть и `direction=back`). |
 | Центрированное SMA | `NPointsMovingAverage` + `ComputeMovingAverageFromPriorValues=false` | Окно = период; `prior=true` — нецентрированное. |
 | Fit-линия | МНК в Node → `addwrite` | `add_fit_line`: fitted-значения пишутся переменной, рисуются рядом с данными. |
 | Совмещённый и 3D-график | `properties.GraphType` | 11012 `GraphType=1` — один график с несколькими линиями; 11021 `GraphType=6` — Surface. |
@@ -95,12 +95,12 @@
 | SVB-макрос | `Application.Open(.svb)` + `Macro.Execute()` | `run_macro`; перед запуском `$ss.Activate()` (иначе `ActiveSpreadsheet` = Nothing); макросы закрываются в `Close-AllDocuments`. |
 | Экспон. сглаживание | `NoTrend*`/`LinearTrend*`/`Damped*` + `ParameterAlpha/Gamma/Delta` | `exponential_smoothing` с `model` (ЛР4: EMA/Хольт/Тейл–Вейдж/Уинтерс). |
 | Полиномиальный fit | МНК в Node (нормальные уравнения, метод Гаусса) | `add_fit_line degree=1..6`. |
-| Нормальность | `ShapiroWilkWTest`, `KSAndLillieforsTestForNormality` | `statistica_normality` (1301); `Histograms` — метод, не флаг. |
+| Нормальность | `ShapiroWilkWTest`, `KSAndLillieforsTestForNormality` | `normality` (1301); `Histograms` — метод, не флаг. |
 | Пошаговая матрица | чтение ряда + `addwrite` колонки | `add_lag_column` дописывает одну колонку `Lag_m` (product/shift + центрир. SMA). |
-| Снимок панели модуля | скрытое окно `#32770` + `ShowWindow`/`CopyFromScreen` | `statistica_dialog`; окно на передний план, режим `screen`/`dialog`; закрывается только диалог. |
+| Снимок панели модуля | скрытое окно `#32770` + `ShowWindow`/`CopyFromScreen` | `dialog`; окно на передний план, режим `screen`/`dialog`; закрывается только диалог. |
 | Импорт в окно | `ImportTextAutoEx` (attach) | лист импорта эфемерный: нужно `save` и открыть файлом, иначе `Spreadsheets` его не видит. |
 | Сохранение в окне | `save_as` + `attach` | `save_spreadsheet` с `copy=false` сохраняет открытый лист на месте. |
-| Постоянное окно | `GetActiveObject`/`New-Object`, `Visible=$true`, без `Quit` | `statistica_open`: окно не закрывается; при нескольких экземплярах `GetActiveObject` отдаёт первый, поэтому `open` переиспользует запущенный. |
+| Постоянное окно | `GetActiveObject`/`New-Object`, `Visible=$true`, без `Quit` | `open`: окно не закрывается; при нескольких экземплярах `GetActiveObject` отдаёт первый, поэтому `open` переиспользует запущенный. |
 | `attach` без `path` | пустой `path` → `ActiveSpreadsheet` | `requirePath` разрешает пустой путь в `attach`. |
 
 ### Почему правка данных делается в одном вызове воркера
@@ -143,7 +143,7 @@
 ## 4. Сознательно не реализовано
 
 ### Шаблоны графиков `.stg`
-Сохранение графа в `.stg` **поддерживается**: `saveGraph` (и параметр `out` у `statistica_time_series`) пишет файл через `Graph.SaveAs` — расширение задаёт формат (`.png/.jpg/.emf` — изображение, `.stg` — родной граф STATISTICA); из результата-массива сохраняются только графики. А вот применения `.stg` как шаблона стиля к другому графу в COM нет: `.stg` открывается как граф-документ (`Application.Open`), но `Plot.Style` не присваивается («не удалось задать свойство Style для каждого объекта»), `Plot.CopyToStyle(Object)` требует недоступного аргумента. Вместо шаблона используйте необязательный `properties` у `statistica_graph` — он задаёт параметры диалога графа.
+Сохранение графа в `.stg` **поддерживается**: `saveGraph` (и параметр `out` у `time_series`) пишет файл через `Graph.SaveAs` — расширение задаёт формат (`.png/.jpg/.emf` — изображение, `.stg` — родной граф STATISTICA); из результата-массива сохраняются только графики. А вот применения `.stg` как шаблона стиля к другому графу в COM нет: `.stg` открывается как граф-документ (`Application.Open`), но `Plot.Style` не присваивается («не удалось задать свойство Style для каждого объекта»), `Plot.CopyToStyle(Object)` требует недоступного аргумента. Вместо шаблона используйте необязательный `properties` у `graph` — он задаёт параметры диалога графа.
 
 ### Экспорт PDF (растянутый на страницу, не векторный)
 Своего PDF STATISTICA в headless не пишет (`SaveAsPDF`/`SaveAsFormat(PDF)` → `False`), поэтому PDF собирается в Node из PNG-снимка графа (растровый одностраничный PDF). Векторный PDF через драйвер печати не поддержан.

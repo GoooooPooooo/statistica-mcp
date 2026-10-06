@@ -44,7 +44,7 @@ const tools = [
     },
   },
   {
-    name: 'statistica_descriptives',
+    name: 'descriptives_engine',
     description:
       'Descriptive statistics computed by the STATISTICA engine itself (Basic Statistics module), including ones the JS shortcut does not provide.',
     inputSchema: {
@@ -59,7 +59,7 @@ const tools = [
     },
   },
   {
-    name: 'statistica_correlation',
+    name: 'correlation',
     description: 'Pearson correlation matrix computed by the STATISTICA Basic Statistics module.',
     inputSchema: {
       type: 'object',
@@ -73,7 +73,7 @@ const tools = [
     },
   },
   {
-    name: 'statistica_frequencies',
+    name: 'frequencies',
     description: 'Frequency tables and histograms computed by the STATISTICA Basic Statistics module.',
     inputSchema: {
       type: 'object',
@@ -87,7 +87,7 @@ const tools = [
     },
   },
   {
-    name: 'statistica_regression',
+    name: 'regression',
     description:
       'Multiple linear regression via STATISTICA General Regression Models. The first predictor list entry is the dependent variable? No: `dependent` is the outcome and `predictors` are the regressors.',
     inputSchema: {
@@ -112,7 +112,7 @@ const tools = [
     },
   },
   {
-    name: 'statistica_t_test',
+    name: 't_test',
     description:
       'Student t-tests via the STATISTICA Basic Statistics module. kind=single tests means against a constant; kind=dependent runs paired comparisons over the listed variables (pairs).',
     inputSchema: {
@@ -134,7 +134,7 @@ const tools = [
     },
   },
   {
-    name: 'statistica_graph',
+    name: 'graph',
     description:
       'Build a STATISTICA graph and optionally export it to an image file. `variables` uses the module syntax, typically "x | y". ' +
       '`properties` sets additional dialog options (e.g. GraphType, FitType, ShowRawDataPoints). ' +
@@ -154,7 +154,7 @@ const tools = [
     },
   },
   {
-    name: 'statistica_time_series',
+    name: 'time_series',
     description:
       'Time Series / Forecasting module. procedure is one of: ' +
       TS_PROCEDURES.join(', ') +
@@ -201,7 +201,7 @@ const tools = [
     },
   },
   {
-    name: 'statistica_anova',
+    name: 'anova',
     description:
       'Analysis of variance via STATISTICA General Linear Models (module 4100 / ANOVA). `dependent` is the outcome; `between` lists factor/covariate effects. Returns the ANOVA table (UnivariateResults) and parameter estimates.',
     inputSchema: {
@@ -226,7 +226,7 @@ const tools = [
     },
   },
   {
-    name: 'statistica_cluster',
+    name: 'cluster',
     description:
       'Hierarchical cluster analysis (module 2201). `variables` are the variables to cluster; returns cluster membership, the amalgamation schedule and descriptive statistics.',
     inputSchema: {
@@ -241,7 +241,7 @@ const tools = [
     },
   },
   {
-    name: 'statistica_factor',
+    name: 'factor',
     description:
       'Factor analysis / principal components (module 2101). Extraction method defaults to PrincipalComponents; `factors` sets the requested number of factors. Returns eigenvalues, loadings and communalities.',
     inputSchema: {
@@ -262,7 +262,7 @@ const tools = [
     },
   },
   {
-    name: 'statistica_correlation_matrix',
+    name: 'correlation_matrix',
     description:
       'Build lagged series products for a time series: for lags 1..lags it creates variables Lag1..LagK holding x(t)*x(t-lag) (correlation products), optionally smoothed with a moving average, and returns their preview. Use mode "shift" for plain lagged series.',
     inputSchema: {
@@ -316,7 +316,7 @@ const tools = [
     },
   },
   {
-    name: 'statistica_normality',
+    name: 'normality',
     description:
       'Normality diagnostics via the Basic Statistics module: descriptive summary plus Shapiro-Wilk W and Kolmogorov-Smirnov/Lilliefors tests and a histogram.',
     inputSchema: {
@@ -406,7 +406,7 @@ const handlers = {
     return lines.join('\n')
   },
 
-  async statistica_descriptives(a) {
+  async descriptives_engine(a) {
     const opts = {
       ValidN: true,
       Mean: true,
@@ -426,7 +426,7 @@ const handlers = {
     return analysis(a, 1301, steps)
   },
 
-  async statistica_correlation(a) {
+  async correlation(a) {
     const opts = { DisplayCorrelationMatrix: true, MeansAndStandardDeviations: true, DisplayPAndN: true }
     const vs = varSpec(a.variables)
     if (vs) opts.VariableList = vs
@@ -434,7 +434,7 @@ const handlers = {
     return analysis(a, 1301, steps)
   },
 
-  async statistica_frequencies(a) {
+  async frequencies(a) {
     const opts = {}
     const vs = varSpec(a.variables)
     if (vs) opts.Variables = vs
@@ -442,7 +442,7 @@ const handlers = {
     return analysis(a, 1301, steps)
   },
 
-  async statistica_regression(a) {
+  async regression(a) {
     const dep = varSpec([a.dependent])
     const pred = varSpec(a.predictors)
     if (!dep || !pred) throw new Error('`dependent` and `predictors` are required')
@@ -465,7 +465,7 @@ const handlers = {
     return analysis(a, 4601, steps)
   },
 
-  async statistica_t_test(a) {
+  async t_test(a) {
     const vs = varSpec(a.variables)
     if (!vs) throw new Error('`variables` is required')
     const kind = a.kind ?? 'single'
@@ -483,7 +483,7 @@ const handlers = {
     return analysis(a, 1301, steps)
   },
 
-  async statistica_graph(a) {
+  async graph(a) {
     const steps = []
     if (a.properties && typeof a.properties === 'object') steps.push({ set: a.properties })
     steps.push({ set: { Variables: String(a.variables) } })
@@ -492,7 +492,7 @@ const handlers = {
     return analysis(a, a.module, steps)
   },
 
-  async statistica_time_series(a) {
+  async time_series(a) {
     const vs = varSpec(a.variables)
     if (!vs) throw new Error('`variables` is required')
     const focus = a.focus ?? 1
@@ -657,7 +657,7 @@ const handlers = {
     return analysis(a, 1901, steps)
   },
 
-  async statistica_anova(a) {
+  async anova(a) {
     const dep = varSpec([a.dependent])
     const between = varSpec(a.between)
     if (!dep || !between) throw new Error('`dependent` and `between` are required')
@@ -680,7 +680,7 @@ const handlers = {
     return analysis(a, 4100, steps)
   },
 
-  async statistica_cluster(a) {
+  async cluster(a) {
     const vs = varSpec(a.variables)
     if (!vs) throw new Error('`variables` is required')
     const steps = [
@@ -694,7 +694,7 @@ const handlers = {
     return analysis(a, 2201, steps)
   },
 
-  async statistica_factor(a) {
+  async factor(a) {
     const vs = varSpec(a.variables)
     if (!vs) throw new Error('`variables` is required')
     const methodMap = {
@@ -719,14 +719,14 @@ const handlers = {
     return analysis(a, 2101, steps)
   },
 
-  async statistica_correlation_matrix(a) {
+  async correlation_matrix(a) {
     const lags = a.lags ?? 12
     const prefix = a.prefix ?? 'Lag'
     const mode = a.mode ?? 'product'
     const read = await runWorker({ cmd: 'read', path: requirePath(a), sheet: a.sheet, variables: [a.variable], attach: a.attach })
     const d = read.data?.[0]
     if (!d) throw new Error(`could not read variable ${a.variable}`)
-    if (d.type === 1) throw new Error('statistica_correlation_matrix needs a numeric series')
+    if (d.type === 1) throw new Error('correlation_matrix needs a numeric series')
     const n = d.values.length
     const x = d.values.map((v) => (v === null || v === undefined ? null : Number(v)))
     const cols = []
@@ -837,7 +837,7 @@ const handlers = {
     return lines.join('\n')
   },
 
-  async statistica_normality(a) {
+  async normality(a) {
     const vs = varSpec(a.variables)
     if (!vs) throw new Error('`variables` is required')
     const opts = {

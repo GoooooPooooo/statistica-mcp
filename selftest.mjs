@@ -126,7 +126,7 @@ console.log(`tools:  ${toolNames.length} registered`)
 console.log(`        ${toolNames.join(', ')}`)
 
 // --- COM / file inspection ------------------------------------------------
-await check('COM availability', 'statistica_info', {}, { mustInclude: 'STATISTICA COM is available' })
+await check('COM availability', 'info', {}, { mustInclude: 'STATISTICA COM is available' })
 const desc = await check('open and describe', 'describe_spreadsheet', { path: WORK }, { mustInclude: 'variables' })
 await check('list analysis modules', 'list_analysis_modules', {}, { mustInclude: 'Time Series' })
 await check('read first rows', 'read_variables', { path: WORK, variables: [1], limit: 5 }, { mustInclude: 'variable 1' })
@@ -137,9 +137,9 @@ const nCases = Number(/Size: (\d+) cases/.exec(desc)?.[1] ?? 0)
 
 // --- descriptive statistics ----------------------------------------------
 await check('descriptives (JS)', 'descriptives', { path: WORK, variables: [1] }, { mustInclude: 'Descriptive statistics' })
-await check('statistica_descriptives (engine)', 'statistica_descriptives', { path: WORK, variables: [1, 2] }, { mustInclude: 'Basic Statistics' })
-await check('correlation matrix', 'statistica_correlation', { path: WORK, variables: [2, 3, 4] }, { mustInclude: 'CorrelationMatrix' })
-await check('t-test (single)', 'statistica_t_test', { path: WORK, kind: 'single', variables: [2] }, { mustInclude: 't-value' })
+await check('descriptives_engine (engine)', 'descriptives_engine', { path: WORK, variables: [1, 2] }, { mustInclude: 'Basic Statistics' })
+await check('correlation matrix', 'correlation', { path: WORK, variables: [2, 3, 4] }, { mustInclude: 'CorrelationMatrix' })
+await check('t-test (single)', 't_test', { path: WORK, kind: 'single', variables: [2] }, { mustInclude: 't-value' })
 await check('set formula on a variable', 'set_formula', { path: WORK, variable: 12, formula: '=v2*2' }, { mustInclude: '=v2*2' })
 
 // --- analysis engine ------------------------------------------------------
@@ -156,26 +156,26 @@ await check(
 )
 
 // --- time series ----------------------------------------------------------
-await check('time series: autocorrelation', 'statistica_time_series', { path: WORK, procedure: 'autocorrelation', variables: [2], lags: 6 }, { mustInclude: 'Autocorrelations' })
-await check('time series: autocorrelation graph -> png', 'statistica_time_series', { path: WORK, procedure: 'autocorrelation', variables: [2], lags: 6, out: ACF_PNG }, { mustInclude: 'saved graphs' })
+await check('time series: autocorrelation', 'time_series', { path: WORK, procedure: 'autocorrelation', variables: [2], lags: 6 }, { mustInclude: 'Autocorrelations' })
+await check('time series: autocorrelation graph -> png', 'time_series', { path: WORK, procedure: 'autocorrelation', variables: [2], lags: 6, out: ACF_PNG }, { mustInclude: 'saved graphs' })
 console.log(`      acf png on disk: ${existsSync(ACF_PNG)} (${existsSync(ACF_PNG) ? readFileSync(ACF_PNG).length : 0} bytes)`)
-await check('time series: autocorrelation graph -> .stg', 'statistica_time_series', { path: WORK, procedure: 'autocorrelation', variables: [2], lags: 6, out: ACF_STG }, { mustInclude: 'saved graphs' })
+await check('time series: autocorrelation graph -> .stg', 'time_series', { path: WORK, procedure: 'autocorrelation', variables: [2], lags: 6, out: ACF_STG }, { mustInclude: 'saved graphs' })
 console.log(`      acf stg on disk: ${existsSync(ACF_STG)} (${existsSync(ACF_STG) ? readFileSync(ACF_STG).length : 0} bytes)`)
 await check(
   'time series: arima',
-  'statistica_time_series',
+  'time_series',
   { path: WORK, procedure: 'arima', variables: [2], arOrder: 1, maOrder: 0, difference: true, forecasts: 4 },
   { mustInclude: 'ForecastCases' },
 )
-await check('time series: spectral', 'statistica_time_series', { path: WORK, procedure: 'spectral', variables: [2] }, { mustInclude: 'Frequency' })
-await check('graph build + export png', 'statistica_graph', { path: WORK, module: 11003, variables: '2 | 11', out: GRAPH_PNG }, { mustInclude: 'saved graphs' })
+await check('time series: spectral', 'time_series', { path: WORK, procedure: 'spectral', variables: [2] }, { mustInclude: 'Frequency' })
+await check('graph build + export png', 'graph', { path: WORK, module: 11003, variables: '2 | 11', out: GRAPH_PNG }, { mustInclude: 'saved graphs' })
 console.log(`      png on disk: ${existsSync(GRAPH_PNG)} (${existsSync(GRAPH_PNG) ? readFileSync(GRAPH_PNG).length : 0} bytes)`)
-await check('graph export pdf', 'statistica_graph', { path: WORK, module: 11003, variables: '2 | 11', out: GRAPH_PDF }, { mustInclude: '.pdf' })
+await check('graph export pdf', 'graph', { path: WORK, module: 11003, variables: '2 | 11', out: GRAPH_PDF }, { mustInclude: '.pdf' })
 console.log(`      pdf on disk: ${existsSync(GRAPH_PDF)} (${existsSync(GRAPH_PDF) ? readFileSync(GRAPH_PDF).length : 0} bytes)`)
-await check('window screenshot', 'statistica_screenshot', { path: WORK, module: 11003, variables: '2 | 11', out: SHOT }, { mustInclude: 'Screenshot saved' })
+await check('window screenshot', 'screenshot', { path: WORK, module: 11003, variables: '2 | 11', out: SHOT }, { mustInclude: 'Screenshot saved' })
 console.log(`      png on disk: ${existsSync(SHOT)} (${existsSync(SHOT) ? readFileSync(SHOT).length : 0} bytes)`)
-await check('time series: smoothing', 'statistica_time_series', { path: WORK, procedure: 'smoothing', variables: [2], window: 3 }, { mustInclude: 'SaveVariables' })
-await check('t-test (dependent)', 'statistica_t_test', { path: WORK, kind: 'dependent', variables: [2, 3] }, { mustInclude: 'Confidence' })
+await check('time series: smoothing', 'time_series', { path: WORK, procedure: 'smoothing', variables: [2], window: 3 }, { mustInclude: 'SaveVariables' })
+await check('t-test (dependent)', 't_test', { path: WORK, kind: 'dependent', variables: [2, 3] }, { mustInclude: 'Confidence' })
 
 // --- spreadsheet editing --------------------------------------------------
 await check('add a variable', 'add_variables', { path: WORK, name: 'SELFTEST_VAR', longName: 'self test', after: 0, count: 1, type: 0 })
@@ -185,7 +185,7 @@ await check('rename it', 'rename_variables', { path: WORK, renames: { 1: 'SELFTE
 await check('resize', 'set_size', { path: WORK, variables: 18 })
 await check('add variable without `after` (appends at end)', 'add_variables', { path: WORK, name: 'APPENDED_VAR', count: 1, type: 0 }, { mustInclude: 'variables' })
 await check('rename several variables at once', 'rename_variables', { path: WORK, renames: { 2: 'REN_A', 3: 'REN_B', 4: 'REN_C' } }, { mustInclude: 'Renamed 3' })
-await check('regression (dependent on SERIES_G)', 'statistica_regression', { path: WORK, dependent: 2, predictors: [1] }, { mustInclude: 'Coefficients' })
+await check('regression (dependent on SERIES_G)', 'regression', { path: WORK, dependent: 2, predictors: [1] }, { mustInclude: 'Coefficients' })
 
 // --- io -------------------------------------------------------------------
 await check('export csv', 'export_csv', { path: WORK, out: CSV })
@@ -208,23 +208,23 @@ await check('recode a variable', 'recode', { path: WORK2, variable: 1, map: { 1:
 await check('select cases (non-missing)', 'select_cases', { path: WORK2, variable: 2, op: 'notmissing' }, { mustInclude: 'Kept' })
 
 // --- new statistical presets ---------------------------------------------
-await check('ANOVA / GLM', 'statistica_anova', { path: WORK, dependent: 2, between: [1] }, { mustInclude: 'UnivariateResults' })
-await check('factor analysis', 'statistica_factor', { path: WORK, variables: [2, 3, 4], factors: 2 }, { mustInclude: 'Eigenvalues' })
-await check('lagged correlation matrix', 'statistica_correlation_matrix', { path: WORK, variable: 2, lags: 3 }, { mustInclude: 'Lag1' })
-await check('cluster analysis', 'statistica_cluster', { path: WORK, variables: [2, 3, 4] }, { mustInclude: 'AmalgamationSchedule' })
+await check('ANOVA / GLM', 'anova', { path: WORK, dependent: 2, between: [1] }, { mustInclude: 'UnivariateResults' })
+await check('factor analysis', 'factor', { path: WORK, variables: [2, 3, 4], factors: 2 }, { mustInclude: 'Eigenvalues' })
+await check('lagged correlation matrix', 'correlation_matrix', { path: WORK, variable: 2, lags: 3 }, { mustInclude: 'Lag1' })
+await check('cluster analysis', 'cluster', { path: WORK, variables: [2, 3, 4] }, { mustInclude: 'AmalgamationSchedule' })
 await check('list sheets', 'list_sheets', { path: WORK }, { mustInclude: 'sheet(s)' })
 await check('set measurement level', 'set_measurement', { path: WORK, variable: 2, type: 'categorical' }, { mustInclude: 'categorical' })
 await check('value labels', 'value_labels', { path: WORK, variable: 2, labels: { 112: 'LOW', 118: 'MID' } }, { mustInclude: 'label(s) applied' })
 
 // --- lab-3 building blocks ------------------------------------------------
-await check('time series: shift', 'statistica_time_series', { path: WORK, procedure: 'shift', variables: [11], lag: 1 }, { mustInclude: 'SaveVariables' })
+await check('time series: shift', 'time_series', { path: WORK, procedure: 'shift', variables: [11], lag: 1 }, { mustInclude: 'SaveVariables' })
 await check('fit line', 'add_fit_line', { path: WORK, y: 11 }, { mustInclude: 'added' })
 await check('polynomial fit (degree 2)', 'add_fit_line', { path: WORK, y: 11, degree: 2, name: 'TS_Nrm_fit2' }, { mustInclude: 'added' })
-await check('exponential smoothing: Holt', 'statistica_time_series', { path: WORK, procedure: 'exponential_smoothing', variables: [2], model: 'holt', alpha: 0.3, gamma: 0.1, forecasts: 4 }, { mustInclude: 'SaveVariables' })
-await check('normality', 'statistica_normality', { path: WORK, variables: [11], intervals: 9 }, { mustInclude: 'Histograms' })
+await check('exponential smoothing: Holt', 'time_series', { path: WORK, procedure: 'exponential_smoothing', variables: [2], model: 'holt', alpha: 0.3, gamma: 0.1, forecasts: 4 }, { mustInclude: 'SaveVariables' })
+await check('normality', 'normality', { path: WORK, variables: [11], intervals: 9 }, { mustInclude: 'Histograms' })
 await check('run SVB macro', 'run_macro', { path: WORK, code: 'Sub Main\n  Dim s As Spreadsheet\n  Set s = ActiveSpreadsheet\n  s.Cells(1,1) = 777\nEnd Sub' }, { mustInclude: 'Ran macro' })
-await check('3D surface graph', 'statistica_graph', { path: WORK, module: 11021, variables: '2 3 4', properties: { GraphType: 6 }, out: G3D }, { mustInclude: 'saved graphs' })
-await check('multi-line graph', 'statistica_graph', { path: WORK, module: 11012, variables: '2 3', properties: { GraphType: 1 }, out: GLINE }, { mustInclude: 'saved graphs' })
+await check('3D surface graph', 'graph', { path: WORK, module: 11021, variables: '2 3 4', properties: { GraphType: 6 }, out: G3D }, { mustInclude: 'saved graphs' })
+await check('multi-line graph', 'graph', { path: WORK, module: 11012, variables: '2 3', properties: { GraphType: 1 }, out: GLINE }, { mustInclude: 'saved graphs' })
 console.log(`      3d on disk: ${existsSync(G3D)} (${existsSync(G3D) ? readFileSync(G3D).length : 0} bytes)`)
 console.log(`      line on disk: ${existsSync(GLINE)} (${existsSync(GLINE) ? readFileSync(GLINE).length : 0} bytes)`)
 await check('combine images (vertical)', 'combine_images', { images: [GRAPH_PNG, GLINE], out: COMBINED, direction: 'vertical' }, { mustInclude: 'Combined' })

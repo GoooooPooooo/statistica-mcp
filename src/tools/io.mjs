@@ -54,7 +54,7 @@ const tools = [
     },
   },
   {
-    name: 'statistica_screenshot',
+    name: 'screenshot',
     description:
       'Launch STATISTICA visibly, optionally build a graph/analysis result, then capture the main window to a PNG/JPG image for a report. Content is prepared while hidden, then the window is shown and captured.',
     inputSchema: {
@@ -80,7 +80,7 @@ const tools = [
     },
   },
   {
-    name: 'statistica_dialog',
+    name: 'dialog',
     description:
       'Open an analysis module dialog in the running STATISTICA window and capture the actual setup panel to an image (Time Series/Forecasting, Transformations tabs, etc.). Use `run:true` to advance to the second-level panel.',
     inputSchema: {
@@ -103,7 +103,7 @@ const tools = [
     },
   },
   {
-    name: 'statistica_open',
+    name: 'open',
     description:
       'Launch a visible STATISTICA window (optionally opening a file) and leave it running. Subsequent calls with attach:true edit this same window — no repeated start/stop of the application.',
     inputSchema: {
@@ -163,7 +163,7 @@ const handlers = {
     return lines.join('\n')
   },
 
-  async statistica_screenshot(a) {
+  async screenshot(a) {
     const r = await runWorker({
       cmd: 'screenshot',
       path: a.path,
@@ -182,7 +182,7 @@ const handlers = {
     return `Screenshot saved to ${r.out} (${r.bytes} bytes, ${r.mode ?? 'screen'} mode)${fg}`
   },
 
-  async statistica_dialog(a) {
+  async dialog(a) {
     const r = await runWorker({
       cmd: 'dialog',
       path: a.path,
@@ -201,7 +201,7 @@ const handlers = {
     return `Dialog "${r.title}" captured to ${r.out} (${r.bytes} bytes, ${r.width}x${r.height}, ${r.mode} mode)`
   },
 
-  async statistica_open(a) {
+  async open(a) {
     const r = await runWorker({ cmd: 'open', path: a.path, sheet: a.sheet })
     const lines = [`STATISTICA started: pid ${r.pid}, version ${r.version}; the window is left open.`]
     if (r.opened) lines.push(`Opened ${a.path} (sheet ${r.sheetName}, index ${r.sheetIndex})`)

@@ -16,7 +16,7 @@
 - Запуск процедур STATISTICA через `run_analysis` (шаги `set`/`call`/`run`/`result`) и самоописание `describe_analysis` / `list_analysis_modules`.
 - Пресеты: описательные, корреляция, частоты, t-тест, регрессия (GRM), временные ряды (ACF/PACF, ARIMA, спектр, сглаживание, разности, декомпозиция).
 - **Запись формул** (`set_formula`: `VariableLongName` + `Recalculate`).
-- **Экспорт графиков** (`statistica_graph` + шаг `saveGraph`, параметр `out` у `statistica_time_series`) в `.png`/`.jpg`/`.emf`, а также в родной формат STATISTICA `.stg`.
+- **Экспорт графиков** (`graph` + шаг `saveGraph`, параметр `out` у `time_series`) в `.png`/`.jpg`/`.emf`, а также в родной формат STATISTICA `.stg`.
 - **Режим `attach`** — работа с уже открытым окном STATISTICA без его закрытия.
 
 ---
@@ -47,17 +47,17 @@
 | # | Улучшение | Как должно быть | Критерий приёмки | Статус |
 |---|---|---|---|---|
 | 1 | Запись формул | `set_formula { variable, formula }` пишет формулу в длинное имя и вызывает `Recalculate` | `=v2*2` даёт 2× значений `v2`; self-test PASS | ✅ |
-| 2 | Экспорт графиков | `statistica_graph { module, variables, out }` и шаг `saveGraph` пишут изображение | PNG с корректным заголовком; self-test PASS | ✅ |
+| 2 | Экспорт графиков | `graph { module, variables, out }` и шаг `saveGraph` пишут изображение | PNG с корректным заголовком; self-test PASS | ✅ |
 | 3 | Live-режим | `attach: true` у инструментов подключается к запущенному окну и не закрывает его | Кросс-процессный тест: PID тот же, окно живо | ✅ |
 
 ### P1 — закрыто в v2.2
 
 | # | Улучшение | Как должно быть | Критерий приёмки | Статус |
 |---|---|---|---|---|
-| 4 | Полная автоматизация ЛР3 | Инструмент `statistica_correlation_matrix { variable, lags }`: для лагов 1..K считает корреляционное произведение, сглаживает (SMA) и пишет таблицу `Lag1..LagK` | Таблица `156×K` на `LAB2.sta`; совпадение с ручными оценками | ✅ |
+| 4 | Полная автоматизация ЛР3 | Инструмент `correlation_matrix { variable, lags }`: для лагов 1..K считает корреляционное произведение, сглаживает (SMA) и пишет таблицу `Lag1..LagK` | Таблица `156×K` на `LAB2.sta`; совпадение с ручными оценками | ✅ |
 | 5 | График из результата анализа | `run_analysis`/пресеты экспортируют любой граф-результат по имени | `saveGraph` берёт `Graphs`/`ScreePlot`/… по имени | ✅ |
 | 6 | Значения и метки | `write_variables` с `attach` меняет ячейки открытого документа; поддержка меток строк | Изменение видно в открытом окне без перезапуска | ✅ (метки строк — `case_names`) |
-| 7 | Пресеты ANOVA / факторного анализа | `statistica_anova`, `statistica_factor` на базе GLM/факторного модуля | Корректные таблицы ANOVA/нагрузок на тестовых данных | ✅ |
+| 7 | Пресеты ANOVA / факторного анализа | `anova`, `factor` на базе GLM/факторного модуля | Корректные таблицы ANOVA/нагрузок на тестовых данных | ✅ |
 | 8 | Структурные правки live | `add/delete/rename/set_size` с `attach` работают с открытым документом | Окно обновляется сразу | ✅ |
 | 9 | Сортировка, фильтр, перекодирование | Инструменты `sort_data`, `select_cases`, `recode` | Результаты совпадают с ручными в GUI | ✅ |
 
@@ -72,7 +72,7 @@
 | 12 | Графы `.stg` | Сохранение/применение `.stg` | Повторяемые графики | ✅ сохранение графа в `.stg` (`saveGraph`/`out`, по расширению); применения стиля через COM нет — вместо шаблона `properties` |
 | 13 | Много листовые книги | Выбор листа по имени/индексу во всех инструментах | `.stw` с несколькими листами | ✅ `list_sheets` + `sheet` |
 
-Дополнительно в v2.3: устойчивость к модальным окнам (экспорт/выход), уровни измерения и метки значений, пресет кластерного анализа, скриншот окна STATISTICA для отчёта, блоки ЛР3 (запаздывание `shift`, центрированное SMA, fit-линия, multi-line и 3D Surface), исполнение SVB-макросов для ЛР6–8 (`run_macro`), модели экспоненциального сглаживания для ЛР4 (`exponential_smoothing model`), полиномиальный fit и проверка нормальности (`statistica_normality`), постоянное окно (`statistica_open` + `attach` без `path`), пошаговые колонки (`add_lag_column`) и снимок панелей модулей (`statistica_dialog`). Инструментов — 41, self-test — 55 проверок. Устройство описано в `ARCHITECTURE.md`; детали — в `development-report.md`, часть III.
+Дополнительно в v2.3: устойчивость к модальным окнам (экспорт/выход), уровни измерения и метки значений, пресет кластерного анализа, скриншот окна STATISTICA для отчёта, блоки ЛР3 (запаздывание `shift`, центрированное SMA, fit-линия, multi-line и 3D Surface), исполнение SVB-макросов для ЛР6–8 (`run_macro`), модели экспоненциального сглаживания для ЛР4 (`exponential_smoothing model`), полиномиальный fit и проверка нормальности (`normality`), постоянное окно (`open` + `attach` без `path`), пошаговые колонки (`add_lag_column`) и снимок панелей модулей (`dialog`). Инструментов — 41, self-test — 55 проверок. Устройство описано в `ARCHITECTURE.md`; детали — в `development-report.md`, часть III.
 
 ---
 
@@ -81,15 +81,15 @@
 Как должно быть по шагам MCP (пример будущего пайплайна):
 
 1. `describe_spreadsheet` → найти `TS_Nrm`.
-2. `statistica_time_series { procedure: "autocorrelation", lags: 15, out: "...\acf.png" }` → график АКФ.
+2. `time_series { procedure: "autocorrelation", lags: 15, out: "...\acf.png" }` → график АКФ.
 3. `run_analysis` (TS, `TypeOfTransformation=3`, `ShiftSeriesForward`, lag 1) → задержанный ряд; `saveGraph` рисунка.
 4. `set_formula { variable: "TS_Prod", formula: "v9*v10" }` → корреляционное произведение.
-5. `statistica_time_series { procedure: "smoothing", window: 12 }` → непараметрическая оценка; рисунок.
-6. `statistica_regression { dependent: <оценка>, predictors: [<индекс>] }` → параметрическая линейная модель (наклон/сдвиг).
-7. `statistica_correlation_matrix { variable: "TS_Nrm", lags: 12 }` → таблица `Lag1..Lag12`.
-8. `statistica_graph { module: 11021/11032, variables: "Lag1 | … | Lag12", out: "...\3d.png" }` → 3D-график.
+5. `time_series { procedure: "smoothing", window: 12 }` → непараметрическая оценка; рисунок.
+6. `regression { dependent: <оценка>, predictors: [<индекс>] }` → параметрическая линейная модель (наклон/сдвиг).
+7. `correlation_matrix { variable: "TS_Nrm", lags: 12 }` → таблица `Lag1..Lag12`.
+8. `graph { module: 11021/11032, variables: "Lag1 | … | Lag12", out: "...\3d.png" }` → 3D-график.
 
-Пункты 1–7 выполнимы: пункт 4 — через `set_formula`, пункт 7 — пресет `statistica_correlation_matrix` (реализован в v2.2). Пункт 8 (3D-график) — через `statistica_graph` / `saveGraph`.
+Пункты 1–7 выполнимы: пункт 4 — через `set_formula`, пункт 7 — пресет `correlation_matrix` (реализован в v2.2). Пункт 8 (3D-график) — через `graph` / `saveGraph`.
 
 ---
 

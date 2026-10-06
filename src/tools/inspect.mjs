@@ -8,7 +8,7 @@ const MEAS = { 0: 'unspecified', 1: 'auto', 2: 'continuous', 3: 'categorical', 4
 
 const tools = [
   {
-    name: 'statistica_info',
+    name: 'info',
     description:
       'Report STATISTICA COM availability, version and executable path. Run this first if STATISTICA operations fail.',
     inputSchema: { type: 'object', properties: {}, additionalProperties: false },
@@ -88,7 +88,7 @@ const tools = [
 ]
 
 const handlers = {
-  async statistica_info() {
+  async info() {
     const r = await runWorker({ cmd: 'info' })
     return [`STATISTICA COM is available.`, `version: ${r.version} (${r.versionEx ?? ''})`, `exe: ${r.exe}`, `pid: ${r.pid}`].join('\n')
   },

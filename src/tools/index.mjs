@@ -12,7 +12,7 @@ const HANDLERS = Object.assign({}, ...GROUPS.map((g) => g.handlers))
 
 // Add the optional `attach` switch to every data/analysis tool (not to info/list/import/export).
 for (const t of TOOLS) {
-  if (['statistica_info', 'list_analysis_modules', 'import_data', 'export_csv', 'statistica_open', 'combine_images'].includes(t.name)) continue
+  if (['info', 'list_analysis_modules', 'import_data', 'export_csv', 'open', 'combine_images'].includes(t.name)) continue
   if (t.inputSchema && t.inputSchema.properties) {
     t.inputSchema.properties.attach = {
       type: 'boolean',
