@@ -184,6 +184,8 @@ const tools = [
         alpha: { type: 'number', minimum: 0, maximum: 1, description: 'exponential_smoothing: level smoothing parameter.' },
         gamma: { type: 'number', minimum: 0, maximum: 1, description: 'exponential_smoothing: trend/seasonal smoothing parameter.' },
         delta: { type: 'number', minimum: 0, maximum: 1, description: 'exponential_smoothing: trend smoothing parameter for damped models.' },
+        initialValue: { type: 'number', description: 'exponential_smoothing: user-defined initial level S0 (otherwise computed by the module).' },
+        initialTrend: { type: 'number', description: 'exponential_smoothing: user-defined initial trend T0.' },
         arOrder: { type: 'integer', minimum: 0, description: 'arima: autoregressive order p. Default 1.' },
         maOrder: { type: 'integer', minimum: 0, description: 'arima: moving-average order q. Default 0.' },
         difference: { type: 'boolean', description: 'arima: difference the series. Default false.' },
@@ -602,6 +604,8 @@ const handlers = {
         if (a.gamma !== undefined) opts.ParameterGamma = a.gamma
         if (a.delta !== undefined) opts.ParameterDelta = a.delta
         if (a.seasonalLag !== undefined) opts.SeasonalLag = a.seasonalLag
+        if (a.initialValue !== undefined) { opts.UseUserDefinedInitialValue = true; opts.UserDefinedInitialValue = a.initialValue }
+        if (a.initialTrend !== undefined) { opts.UseUserDefinedInitialTrend = true; opts.UserDefinedInitialTrend = a.initialTrend }
         steps = [
           { set: { Variables: vs, FocusTimeSeriesVariable: focus } },
           { call: 'ExponentialSmoothingAndForecasting' },

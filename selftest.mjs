@@ -221,6 +221,7 @@ await check('time series: shift', 'time_series', { path: WORK, procedure: 'shift
 await check('fit line', 'add_fit_line', { path: WORK, y: 11 }, { mustInclude: 'added' })
 await check('polynomial fit (degree 2)', 'add_fit_line', { path: WORK, y: 11, degree: 2, name: 'TS_Nrm_fit2' }, { mustInclude: 'added' })
 await check('exponential smoothing: Holt', 'time_series', { path: WORK, procedure: 'exponential_smoothing', variables: [2], model: 'holt', alpha: 0.3, gamma: 0.1, forecasts: 4 }, { mustInclude: 'SaveVariables' })
+await check('exponential smoothing: user initial value', 'time_series', { path: WORK, procedure: 'exponential_smoothing', variables: [11], model: 'simple', alpha: 0.05, initialValue: 121 }, { mustInclude: 'S0=121' })
 await check('normality', 'normality', { path: WORK, variables: [11], intervals: 9 }, { mustInclude: 'Histograms' })
 await check('run SVB macro', 'run_macro', { path: WORK, code: 'Sub Main\n  Dim s As Spreadsheet\n  Set s = ActiveSpreadsheet\n  s.Cells(1,1) = 777\nEnd Sub' }, { mustInclude: 'Ran macro' })
 await check('3D surface graph', 'graph', { path: WORK, module: 11021, variables: '2 3 4', properties: { GraphType: 6 }, out: G3D }, { mustInclude: 'saved graphs' })
